@@ -22,15 +22,18 @@ export default function OwnerBar({ username }: { username: string }) {
     <div
       style={{
         position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center",
-        gap: "0.75rem", padding: "0.55rem 1rem", paddingRight: "4rem",
+        justifyContent: "space-between", gap: "0.75rem",
+        padding: "0.55rem 1rem", paddingRight: "4rem",
         background: "#0a0a0a", color: "#f5efe4",
         borderBottom: "1px solid rgba(212,175,55,0.3)", fontSize: "0.82rem",
       }}
     >
-      <Link href="/dashboard" className="btn btn-sm" style={{ whiteSpace: "nowrap" }}>
-        ← Back to dashboard
+      <Link href="/" className="brand-text" style={{ fontFamily: "var(--font-display, 'Fraunces', serif)", color: "#d4af37", fontSize: "1.15rem", textDecoration: "none", letterSpacing: "-0.02em" }}>
+        FONCÉ
       </Link>
-      <span style={{ opacity: 0.7 }}>You&apos;re viewing your live showcase</span>
+      <Link href="/dashboard" className="btn btn-sm" style={{ whiteSpace: "nowrap" }}>
+        Back to dashboard
+      </Link>
     </div>
   );
 }
