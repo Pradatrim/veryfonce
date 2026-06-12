@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomBytes } from "crypto";
+import { z } from "zod";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { isPresetVip, isFontVip } from "@/lib/themes";
 
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -60,4 +62,42 @@ export async function POST(req: Request) {
 
   const updated = await db.user.update({ where: { id: user.id }, data });
   return NextResponse.json({ ok: true, profilePhoto: updated.profilePhoto });
+}
+
+// JSON settings update: tagline, layout template, and theme/font choice.
+const patchSchema = z.object({
+  tagline: z.string().max(60).optional(),
+  template: z.enum(["grid", "editorial", "minimal"]).optional(),
+  themePreset: z.string().max(20).optional(),
+  themeFont: z.string().max(20).optional(),
+  themeCustom: z.string().max(20000).nullable().optional(),
+  removePhoto: z.boolean().optional(),
+});
+
+export async function PATCH(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  const b = parsed.data;
+
+  // VIP gating is enforced for premium themes/fonts/custom modes.
+  if (b.themePreset && isPresetVip(b.themePreset) && !user.isVip) {
+    return NextResponse.json({ error: "That theme is VIP-only." }, { status: 403 });
+  }
+  if (b.themeFont && isFontVip(b.themeFont) && !user.isVip) {
+    return NextResponse.json({ error: "That font is VIP-only." }, { status: 403 });
+  }
+
+  const data: Record<string, unknown> = {};
+  if (b.tagline !== undefined) data.tagline = b.tagline;
+  if (b.template !== undefined) data.template = b.template;
+  if (b.themePreset !== undefined) data.themePreset = b.themePreset;
+  if (b.themeFont !== undefined) data.themeFont = b.themeFont;
+  if (b.themeCustom !== undefined) data.themeCustom = b.themeCustom;
+  if (b.removePhoto) data.profilePhoto = null;
+
+  await db.user.update({ where: { id: user.id }, data });
+  return NextResponse.json({ ok: true });
 }

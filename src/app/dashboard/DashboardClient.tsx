@@ -1,466 +1,353 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TierBadge } from "@/components/TierBadge";
+import {
+  THEME_PRESETS, FONT_SETS, applyTheme, buildThemeConfig,
+  isPresetVip, isFontVip, type ThemeConfig,
+} from "@/lib/themes";
+import VipPaywall from "@/components/VipPaywall";
 
-type Variant = {
-  id: string;
-  name: string;
-  sourcePrice: number;
-  sellPrice: number;
-  stock: number;
-  active: boolean;
-  image: string | null;
-};
 type Product = {
-  id: string;
-  title: string;
-  description: string;
-  images: string[];
-  currency: string;
-  sourcePrice: number;
-  sellPrice: number;
-  active: boolean;
-  priceDetected: boolean;
-  sourceUrl: string;
-  variants: Variant[];
+  id: string; title: string; image: string; sourcePrice: number; sellPrice: number;
+  priceDetected: boolean; active: boolean; paused: boolean; archived: boolean;
+  detectedNewPrice: number | null; views: number; sourceUrl: string;
+  tier: { key: string; label: string; shortBadge: string; description: string };
 };
-type Order = {
-  id: string;
-  title: string;
-  amountTotal: number;
-  creatorPayout: number;
-  paymentStatus: string;
-  fulfillmentStatus: string;
-  createdAt: string;
+type User = {
+  username: string; profilePhoto: string | null; tagline: string; template: string;
+  priceDisplay: string; themePreset: string; themeFont: string; themeCustom: string | null;
+  isVip: boolean; showcaseVisits: number; buyClicks: number;
 };
-type Props = {
-  user: {
-    name: string;
-    username: string;
-    bio: string;
-    profilePhoto: string | null;
-    stripeConnected: boolean;
-    payoutsReady: boolean;
-  };
-  products: Product[];
-  orders: Order[];
-  stripeLive: boolean;
+type Stats = {
+  totalSales: number; totalEarnings: number; totalProductViews: number;
+  rewardsBalance: number; nextReward: { amount: number; expiresAt: string } | null;
 };
 
-const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const FonceStar = ({ size = 22 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M 12 2.5 L 14.4 8.8 L 21 9.1 L 15.8 13.2 L 17.6 19.7 L 12 16 L 6.4 19.7 L 8.2 13.2 L 3 9.1 L 9.6 8.8 Z"
+      fill="#6b5318" stroke="url(#fonceStarGrad)" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+  </svg>
+);
 
-export default function DashboardClient({ user, products, orders, stripeLive }: Props) {
-  const [tab, setTab] = useState<"products" | "profile" | "payouts" | "orders">("products");
-
-  return (
-    <div>
-      <div className="mb-6 flex gap-1 rounded-full border border-accent/15 bg-elevated/80 p-1 text-sm backdrop-blur-sm">
-        {(["products", "profile", "payouts", "orders"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 rounded-full px-4 py-2 capitalize transition ${
-              tab === t ? "bg-accent font-semibold text-[#1a1410]" : "text-ink/60 hover:text-ink"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {tab === "products" && <ProductsTab products={products} />}
-      {tab === "profile" && <ProfileTab user={user} />}
-      {tab === "payouts" && (
-        <PayoutsTab
-          connected={user.stripeConnected}
-          payoutsReady={user.payoutsReady}
-          stripeLive={stripeLive}
-        />
-      )}
-      {tab === "orders" && <OrdersTab orders={orders} />}
-    </div>
-  );
-}
-
-/* ───────────────────────── Products ───────────────────────── */
-function ProductsTab({ products }: { products: Product[] }) {
+export default function DashboardClient({ user, products, stats }: { user: User; products: Product[]; stats: Stats }) {
   const router = useRouter();
-  const [url, setUrl] = useState("");
-  const [importing, setImporting] = useState(false);
-  const [msg, setMsg] = useState("");
+  const photoInput = useRef<HTMLInputElement>(null);
 
-  async function importProduct(e: React.FormEvent) {
-    e.preventDefault();
-    setImporting(true);
-    setMsg("");
-    const res = await fetch("/api/products/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+  const [tagline, setTagline] = useState(user.tagline);
+  const [template, setTemplate] = useState(user.template);
+  const [priceDisplay, setPriceDisplay] = useState(user.priceDisplay);
+  const [preset, setPreset] = useState(user.themePreset);
+  const [font, setFont] = useState(user.themeFont);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [paywall, setPaywall] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Apply the saved theme to the page on mount (and when changed).
+  useEffect(() => {
+    applyTheme(buildThemeConfig({ themePreset: preset, themeFont: font, themeCustom: user.themeCustom }));
+  }, [preset, font, user.themeCustom]);
+
+  const link = `fonce.com/@${user.username}`;
+
+  async function patch(body: Record<string, unknown>) {
+    const res = await fetch("/api/profile", {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    const data = await res.json();
-    setImporting(false);
-    if (!res.ok) return setMsg(data.error ?? "Import failed");
-    setUrl("");
-    setMsg(data.mode === "demo" ? "Imported (demo data — live parsing was blocked)" : "Imported!");
+    if (res.ok) router.refresh();
+    return res.ok;
+  }
+
+  function pickTheme(key: string) {
+    if (isPresetVip(key) && !user.isVip) { setPaywall(true); return; }
+    setPreset(key);
+    applyTheme({ preset: key, font } as ThemeConfig);
+    patch({ themePreset: key });
+  }
+  function pickFont(key: string) {
+    if (isFontVip(key) && !user.isVip) { setPaywall(true); return; }
+    setFont(key);
+    applyTheme({ preset, font: key } as ThemeConfig);
+    patch({ themeFont: key });
+  }
+  function pickTemplate(t: string) { setTemplate(t); patch({ template: t }); }
+  function pickPrice(p: string) { setPriceDisplay(p); patch({ priceDisplay: p }); }
+
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.set("photo", f);
+    const res = await fetch("/api/profile", { method: "POST", body: fd });
+    if (res.ok) router.refresh();
+  }
+  async function removePhoto() { await patch({ removePhoto: true }); }
+
+  function copyLink() {
+    navigator.clipboard?.writeText(`https://${link}`).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  async function productAction(id: string, body: Record<string, unknown> | "delete") {
+    if (body === "delete") {
+      if (!confirm("Remove this product?")) return;
+      await fetch(`/api/products/${id}`, { method: "DELETE" });
+    } else {
+      await fetch(`/api/products/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    }
     router.refresh();
   }
+
+  const pausedCount = products.filter((p) => p.paused && !p.archived).length;
 
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <h2 className="font-medium">Import a product</h2>
-        <p className="mt-1 text-sm text-ink/60">
-          Paste an AliExpress product link. Price and variants fill in automatically.
-          The original supplier cost is locked.
-        </p>
-        <form onSubmit={importProduct} className="mt-4 flex gap-2">
-          <input
-            className="input"
-            placeholder="https://www.aliexpress.com/item/..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            required
-          />
-          <button className="btn whitespace-nowrap" disabled={importing}>
-            {importing ? "Importing…" : "Import"}
-          </button>
-        </form>
-        {msg && <p className="mt-2 text-sm text-ink/60">{msg}</p>}
-      </div>
+    <>
+      {/* shared gradient def for the gold stars */}
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+        <defs>
+          <radialGradient id="fonceStarGrad" cx="35%" cy="28%" r="78%">
+            <stop offset="0%" stopColor="#fce99a" /><stop offset="35%" stopColor="#ecc960" />
+            <stop offset="70%" stopColor="#d4af37" /><stop offset="100%" stopColor="#7e6520" />
+          </radialGradient>
+        </defs>
+      </svg>
 
-      {products.length === 0 ? (
-        <p className="py-10 text-center text-sm text-ink/50">
-          No products yet. Import your first one above.
-        </p>
-      ) : (
-        products.map((p) => <ProductCard key={p.id} product={p} />)
-      )}
-    </div>
-  );
-}
-
-function ProductCard({ product }: { product: Product }) {
-  const router = useRouter();
-  const [title, setTitle] = useState(product.title);
-  const [sellPrice, setSellPrice] = useState(product.sellPrice);
-  const [active, setActive] = useState(product.active);
-  const [variants, setVariants] = useState(product.variants);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
-  // When the source price wasn't auto-detected, the creator enters it once.
-  const needsPrice = !product.priceDetected;
-  const [sourcePriceInput, setSourcePriceInput] = useState(
-    product.sourcePrice > 0 ? product.sourcePrice : 0,
-  );
-
-  function setVariant(id: string, patch: Partial<Variant>) {
-    setVariants((vs) => vs.map((v) => (v.id === id ? { ...v, ...patch } : v)));
-  }
-
-  async function save() {
-    setSaving(true);
-    setMsg("");
-    const res = await fetch(`/api/products/${product.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        sellPrice,
-        active,
-        // Send the entered source price only the first time (when not detected).
-        ...(needsPrice && sourcePriceInput > 0 ? { sourcePrice: sourcePriceInput } : {}),
-        variants: variants.map((v) => ({
-          id: v.id,
-          name: v.name,
-          sellPrice: v.sellPrice,
-          stock: v.stock,
-          active: v.active,
-        })),
-      }),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (!res.ok) return setMsg(data.error ?? "Save failed");
-    setMsg("Saved");
-    router.refresh();
-  }
-
-  async function remove() {
-    if (!confirm("Delete this product?")) return;
-    await fetch(`/api/products/${product.id}`, { method: "DELETE" });
-    router.refresh();
-  }
-
-  const margin = (sell: number, source: number) =>
-    `${sell > 0 ? Math.round(((sell - source) / sell) * 100) : 0}% margin`;
-
-  return (
-    <div className="card">
-      {needsPrice && (
-        <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-300">
-          ⚠ We couldn&apos;t auto-detect this product. Add the title and image, and
-          enter the <strong>price from the source page</strong> below — it locks once you save.
-        </div>
-      )}
-      <div className="flex gap-4">
-        {product.images[0] && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.images[0]} alt="" className="h-20 w-20 rounded-lg object-cover" />
-        )}
-        <div className="flex-1">
-          <div className="mb-2">
-            <TierBadge sourceUrl={product.sourceUrl} />
+      <div className="dash">
+        <div className="container">
+          {/* Header */}
+          <div className="dash-header">
+            <div className="dash-identity">
+              <div className="dash-avatar-wrap" onClick={() => photoInput.current?.click()} title="Click to change profile photo">
+                {user.profilePhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profilePhoto} alt="" className="avatar dash-avatar" />
+                ) : (
+                  <div className="avatar dash-avatar" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 }}>
+                    {user.username[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="dash-avatar-overlay">Change</div>
+                {user.profilePhoto && (
+                  <button className="dash-avatar-remove" title="Remove photo" onClick={(e) => { e.stopPropagation(); removePhoto(); }}>×</button>
+                )}
+                <input type="file" ref={photoInput} accept="image/*" style={{ display: "none" }} onChange={onPhoto} />
+              </div>
+              <div>
+                <h1>@{user.username}</h1>
+                <p style={{ color: "var(--fg-muted)" }}>
+                  Your showcase · <a href={`/${user.username}`} target="_blank" rel="noreferrer">view live</a>
+                </p>
+              </div>
+            </div>
+            <div className="share-link" onClick={copyLink} title="Click to copy">
+              <span style={{ color: "var(--fg-muted)" }}>Your link:</span>
+              <span className="share-link-url">{link}</span>
+              <button className="share-link-copy" title="Copy link" aria-label="Copy link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="8" y="8" width="11" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
+                  <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                <span>{copied ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
           </div>
-          <input className="input font-medium" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <div className="mt-2 flex flex-wrap items-end gap-4">
-            <div>
-              <label className="label">
-                {needsPrice ? "Supplier cost (enter once)" : "Supplier cost (locked)"}
-              </label>
-              {needsPrice ? (
-                <input
-                  className="input w-28 border-amber-400/50"
-                  type="number"
-                  step="0.01"
-                  min={0.01}
-                  placeholder="0.00"
-                  value={sourcePriceInput || ""}
-                  onChange={(e) => setSourcePriceInput(Number(e.target.value))}
-                />
+
+          {/* VIP banner */}
+          <div className={`vip-banner ${user.isVip ? "is-vip" : ""}`}>
+            <div className="vip-banner-left">
+              {user.isVip ? (
+                <>
+                  <FonceStar />
+                  <div><strong>Fonce VIP</strong><small>All customization unlocked.</small></div>
+                </>
               ) : (
-                <div className="rounded-lg border border-accent/15 bg-soft px-3 py-2 text-sm text-ink/60">
-                  ${product.sourcePrice.toFixed(2)} 🔒
-                </div>
+                <div><strong>Free plan</strong><small>Upgrade to unlock custom colors, ombre, image backgrounds, and premium fonts.</small></div>
               )}
             </div>
-            <div>
-              <label className="label">Your price</label>
-              <input
-                className="input w-28"
-                type="number"
-                step="0.01"
-                min={needsPrice ? sourcePriceInput : product.sourcePrice}
-                value={sellPrice || ""}
-                onChange={(e) => setSellPrice(Number(e.target.value))}
-              />
-            </div>
-            <div className="pb-2 text-xs text-ink/50">
-              {margin(sellPrice, needsPrice ? sourcePriceInput : product.sourcePrice)}
-            </div>
-            <label className="flex items-center gap-2 pb-2 text-sm">
-              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-              Live
-            </label>
+            {!user.isVip && (
+              <button className="btn btn-primary btn-sm btn-vip-upgrade" onClick={() => setPaywall(true)}>Upgrade to VIP</button>
+            )}
           </div>
-        </div>
-      </div>
 
-      {variants.length > 0 && (
-        <div className="mt-4 border-t border-ink/10 pt-4">
-          <p className="label">Variants ({variants.length})</p>
-          <div className="space-y-2">
-            {variants.map((v) => (
-              <div key={v.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-accent/10 bg-soft/60 px-3 py-2">
-                <input
-                  className="input flex-1 min-w-[140px]"
-                  value={v.name}
-                  onChange={(e) => setVariant(v.id, { name: e.target.value })}
-                />
-                <span className="text-xs text-ink/50">cost ${v.sourcePrice.toFixed(2)} 🔒</span>
-                <div>
-                  <span className="mr-1 text-xs text-ink/50">price</span>
-                  <input
-                    className="input inline w-24"
-                    type="number"
-                    step="0.01"
-                    min={v.sourcePrice}
-                    value={v.sellPrice}
-                    onChange={(e) => setVariant(v.id, { sellPrice: Number(e.target.value) })}
-                  />
+          {/* Rewards */}
+          {(stats.rewardsBalance > 0 || user.isVip) && (
+            <div className="rewards-card">
+              <div className="rewards-card-left">
+                <div className="rewards-card-label">Fonce Rewards</div>
+                <div className="rewards-card-balance">${stats.rewardsBalance.toFixed(2)}</div>
+                <div className="rewards-card-meta">Earn 5% back on every order. Use rewards at checkout.</div>
+              </div>
+              {stats.rewardsBalance > 0 && <FonceStar size={36} />}
+            </div>
+          )}
+
+          {/* Stats */}
+          <div className="stats">
+            <div className="stat"><div className="label">Products</div><div className="val">{products.length}</div></div>
+            <div className="stat"><div className="label">Sales</div><div className="val">{stats.totalSales}</div></div>
+            <div className="stat"><div className="label">Earnings</div><div className="val">${stats.totalEarnings.toFixed(2)}</div></div>
+          </div>
+
+          {/* Insights */}
+          <div className="insights-wrap">
+            <button className="btn btn-insights" onClick={() => setInsightsOpen((v) => !v)}>
+              <span>Insights</span><span className="chev">▾</span>
+            </button>
+            {insightsOpen && (
+              <div className="insights-panel" style={{ display: "grid" }}>
+                <div className="insight">
+                  <div className="label">Visits</div>
+                  <div className="val">{user.showcaseVisits}</div>
+                  <div className="desc">People who opened your showcase link.</div>
                 </div>
-                <div>
-                  <span className="mr-1 text-xs text-ink/50">stock</span>
-                  <input
-                    className="input inline w-20"
-                    type="number"
-                    value={v.stock}
-                    onChange={(e) => setVariant(v.id, { stock: Number(e.target.value) })}
-                  />
+                <div className={`insight ${!user.isVip ? "locked" : ""}`}>
+                  <div className="label">Views {!user.isVip && <span className="vip-badge sm">VIP</span>}</div>
+                  <div className={`val ${!user.isVip ? "blurred" : ""}`}>{user.isVip ? stats.totalProductViews : "•••"}</div>
+                  <div className="desc">Visitors who clicked into a product.</div>
                 </div>
-                <label className="flex items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={v.active}
-                    onChange={(e) => setVariant(v.id, { active: e.target.checked })}
-                  />
-                  on
-                </label>
+                <div className={`insight ${!user.isVip ? "locked" : ""}`}>
+                  <div className="label">Clicks {!user.isVip && <span className="vip-badge sm">VIP</span>}</div>
+                  <div className={`val ${!user.isVip ? "blurred" : ""}`}>{user.isVip ? user.buyClicks : "•••"}</div>
+                  <div className="desc">Visitors who tapped &quot;Buy now&quot;.</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {pausedCount > 0 && (
+            <div className="alert-banner">
+              <h4>{pausedCount} product{pausedCount > 1 ? "s" : ""} need{pausedCount > 1 ? "" : "s"} attention</h4>
+              <p>Source data has changed. Hidden from your showcase until you review and republish.</p>
+            </div>
+          )}
+
+          {/* Tagline */}
+          <div className="section-head"><h2>Tagline</h2><span className="meta">a short line under your @username</span></div>
+          <div className="tagline-editor">
+            <input type="text" maxLength={60} placeholder="e.g. the brands I actually wear" value={tagline} onChange={(e) => setTagline(e.target.value)} />
+            <div className="tagline-controls">
+              <span className="tagline-count">{tagline.length} / 60</span>
+              <button className="btn btn-sm" onClick={() => patch({ tagline })}>Save</button>
+            </div>
+          </div>
+
+          {/* Price display */}
+          <div className="section-head"><h2>Price display</h2><span className="meta">how prices appear on your showcase</span></div>
+          <div className="pd-segments">
+            {[
+              { k: "price", label: "Show price" },
+              { k: "shop", label: "Shop now" },
+              { k: "cart", label: "Cart icon" },
+            ].map((s) => (
+              <button key={s.k} type="button" className={`pd-segment ${priceDisplay === s.k ? "active" : ""}`} onClick={() => pickPrice(s.k)}>
+                <span>{s.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Layout */}
+          <div className="section-head"><h2>Layout</h2><span className="meta">how your products are presented</span></div>
+          <div className="templates">
+            {[
+              { k: "grid", title: "Grid", desc: "Clean, image-forward. The default.", cells: 6, cls: "tpl-grid" },
+              { k: "editorial", title: "Editorial", desc: "Magazine-style. Storytelling layout.", cells: 2, cls: "tpl-edit" },
+              { k: "minimal", title: "Minimal", desc: "Vertical list. Quiet luxury.", cells: 4, cls: "tpl-min" },
+            ].map((t) => (
+              <div key={t.k} className={`template-option ${template === t.k ? "active" : ""}`} onClick={() => pickTemplate(t.k)}>
+                <div className={`template-preview ${t.cls}`}>{Array.from({ length: t.cells }).map((_, i) => <div key={i} />)}</div>
+                <h4>{t.title}</h4><p>{t.desc}</p>
               </div>
             ))}
           </div>
-        </div>
-      )}
 
-      <div className="mt-4 flex items-center gap-3">
-        <button className="btn" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-        <button className="text-sm text-red-400 hover:underline" onClick={remove}>
-          Delete
-        </button>
-        {msg && <span className="text-sm text-ink/60">{msg}</span>}
-      </div>
-    </div>
-  );
-}
+          {/* Theme */}
+          <div className="section-head"><h2>Theme</h2><span className="meta">color palette for your public showcase</span></div>
+          <div className="theme-grid">
+            {Object.entries(THEME_PRESETS).map(([key, t]) => {
+              const locked = Boolean(t.vip && !user.isVip);
+              const swatchStyle: React.CSSProperties = t.texture
+                ? { background: t.bg, backgroundImage: `url('${t.texture}'),linear-gradient(${t.bg},${t.bg})` }
+                : { background: t.bg };
+              return (
+                <div key={key} className={`theme-option ${preset === key ? "active" : ""} ${locked ? "locked" : ""} ${t.texture ? "textured" : ""}`} onClick={() => pickTheme(key)}>
+                  <div className="theme-swatch" style={swatchStyle} />
+                  <div className="label">
+                    {t.name}{t.live && <span className="live-tag" title="supports live mode"> ●</span>}{locked && <span className="vip-badge">VIP</span>}
+                  </div>
+                </div>
+              );
+            })}
+            <div className={`theme-option custom ${preset === "custom" ? "active" : ""} ${!user.isVip ? "locked" : ""}`} onClick={() => pickTheme("custom")}>
+              <div className="theme-swatch" style={{ background: "linear-gradient(135deg,#0a0806,#c9a961)" }} />
+              <div className="label">Custom{!user.isVip && <span className="vip-badge">VIP</span>}</div>
+            </div>
+            <div className={`theme-option ombre-tile ${preset === "ombre" ? "active" : ""} ${!user.isVip ? "locked" : ""}`} onClick={() => pickTheme("ombre")}>
+              <div className="theme-swatch" style={{ background: "linear-gradient(180deg,#3d1f47,#e8a04a)" }} />
+              <div className="label">Ombre{!user.isVip && <span className="vip-badge">VIP</span>}</div>
+            </div>
+            <div className={`theme-option image-tile ${preset === "image" ? "active" : ""} ${!user.isVip ? "locked" : ""}`} onClick={() => pickTheme("image")}>
+              <div className="theme-swatch" />
+              <div className="label">Image{!user.isVip && <span className="vip-badge">VIP</span>}</div>
+            </div>
+          </div>
 
-/* ───────────────────────── Profile ───────────────────────── */
-function ProfileTab({ user }: { user: Props["user"] }) {
-  const router = useRouter();
-  const [name, setName] = useState(user.name);
-  const [bio, setBio] = useState(user.bio);
-  const [preview, setPreview] = useState<string | null>(user.profilePhoto);
-  const [file, setFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+          {/* Fonts */}
+          <div className="section-head"><h2>Font</h2><span className="meta">typography for your showcase</span></div>
+          <div className="theme-grid">
+            {Object.entries(FONT_SETS).map(([key, f]) => {
+              const locked = isFontVip(key) && !user.isVip;
+              return (
+                <div key={key} className={`theme-option ${font === key ? "active" : ""} ${locked ? "locked" : ""}`} onClick={() => pickFont(key)}>
+                  <div className="theme-swatch" style={{ background: "var(--bg-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: `'${f.serif}', serif`, fontSize: 22, color: "var(--fg)" }}>Aa</div>
+                  <div className="label">{f.name}{locked && <span className="vip-badge">VIP</span>}</div>
+                </div>
+              );
+            })}
+          </div>
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
-    setFile(f);
-    if (f) setPreview(URL.createObjectURL(f));
-  }
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setMsg("");
-    const fd = new FormData();
-    fd.set("name", name);
-    fd.set("bio", bio);
-    if (file) fd.set("photo", file);
-    const res = await fetch("/api/profile", { method: "POST", body: fd });
-    const data = await res.json();
-    setSaving(false);
-    if (!res.ok) return setMsg(data.error ?? "Save failed");
-    setMsg("Saved");
-    router.refresh();
-  }
-
-  return (
-    <form onSubmit={save} className="card max-w-lg space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="h-20 w-20 overflow-hidden rounded-full border border-accent/20 bg-elevated">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="" className="h-full w-full object-cover" />
+          {/* Products */}
+          <div className="section-head"><h2>Products</h2><span className="meta">{products.length} total</span></div>
+          {products.length === 0 ? (
+            <div className="empty-state"><h3>No products yet</h3><p>Add your first product to start showcasing.</p></div>
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl text-ink/30">
-              {(name || "?")[0]?.toUpperCase()}
+            <div className="product-list">
+              {products.map((p) => (
+                <div key={p.id} className={`product-card-mini ${p.paused ? "paused" : ""} ${p.archived ? "archived" : ""}`}>
+                  <div className="img" style={{ backgroundImage: `url('${p.image}')` }} />
+                  <div className="info">
+                    {p.archived ? <span className="paused-badge archived-badge">Archived</span> : p.paused ? <span className="paused-badge">Needs refresh</span> : null}
+                    <h4>{p.title}</h4>
+                    <span className={`source-tier-chip tier-${p.tier.key}`} title={p.tier.description}>
+                      {p.tier.key === "premium" ? "★" : p.tier.key === "verified" ? "✓" : "·"} {p.tier.label} · {p.tier.shortBadge}
+                    </span>
+                    <div className="pricing">
+                      <span>cost ${p.sourcePrice.toFixed(2)}</span>
+                      <span className="listed">listed ${p.sellPrice.toFixed(2)}</span>
+                    </div>
+                    {user.isVip && <div className="product-meta-row"><span className="product-views">{p.views} {p.views === 1 ? "view" : "views"}</span></div>}
+                    {p.paused && p.detectedNewPrice != null && (
+                      <div className="price-change-note">Source price changed:<br />was ${p.sourcePrice.toFixed(2)} → <strong>${p.detectedNewPrice.toFixed(2)}</strong></div>
+                    )}
+                    <div className="actions">
+                      {p.paused && !p.archived && <button className="btn refresh-btn" onClick={() => productAction(p.id, { paused: false })}>Refresh &amp; republish</button>}
+                      {p.archived
+                        ? <button className="btn archive-btn" onClick={() => productAction(p.id, { archived: false })}>Unarchive</button>
+                        : <button className="btn archive-btn" onClick={() => productAction(p.id, { archived: true })}>Archive</button>}
+                      <button className="btn btn-danger remove-btn" onClick={() => productAction(p.id, "delete")}>Remove</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
-        <label className="btn-outline cursor-pointer">
-          Upload photo
-          <input type="file" accept="image/*" className="hidden" onChange={onFile} />
-        </label>
       </div>
-      <div>
-        <label className="label">Display name</label>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div>
-        <label className="label">Bio</label>
-        <textarea className="input min-h-[80px]" value={bio} onChange={(e) => setBio(e.target.value)} />
-      </div>
-      <p className="text-xs text-ink/50">Your storefront: fonce.app/{user.username}</p>
-      <div className="flex items-center gap-3">
-        <button className="btn" disabled={saving}>{saving ? "Saving…" : "Save profile"}</button>
-        {msg && <span className="text-sm text-ink/60">{msg}</span>}
-      </div>
-    </form>
-  );
-}
 
-/* ───────────────────────── Payouts ───────────────────────── */
-function PayoutsTab({
-  connected, payoutsReady, stripeLive,
-}: { connected: boolean; payoutsReady: boolean; stripeLive: boolean }) {
-  return (
-    <div className="card max-w-lg space-y-3">
-      <h2 className="font-medium">Get paid</h2>
-      {!stripeLive ? (
-        <p className="text-sm text-ink/60">
-          Payments are in <strong>demo mode</strong>. Once the owner adds Stripe keys,
-          you&apos;ll connect your bank here to receive your earnings automatically on every sale.
-        </p>
-      ) : payoutsReady ? (
-        <p className="text-sm text-emerald-400">
-          ✓ Your payout account is connected. Your earnings from each sale are sent to you automatically.
-        </p>
-      ) : connected ? (
-        <>
-          <p className="text-sm text-amber-400">
-            Almost there — your payout setup isn&apos;t finished. Until it is, your share
-            of any sale is held safely and paid once you complete setup.
-          </p>
-          <a className="btn" href="/api/connect/onboard">Finish payout setup</a>
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-ink/60">
-            Connect your account to receive your share of each sale automatically.
-          </p>
-          <a className="btn" href="/api/connect/onboard">Connect payouts</a>
-        </>
-      )}
-    </div>
+      {paywall && <VipPaywall onClose={() => setPaywall(false)} onSuccess={() => { setPaywall(false); router.refresh(); }} />}
+    </>
   );
-}
-
-/* ───────────────────────── Orders ───────────────────────── */
-function OrdersTab({ orders }: { orders: Order[] }) {
-  if (orders.length === 0) {
-    return <p className="py-10 text-center text-sm text-ink/50">No orders yet.</p>;
-  }
-  return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="text-left text-xs uppercase text-ink/50">
-          <tr>
-            <th className="pb-2">Product</th>
-            <th className="pb-2">Total</th>
-            <th className="pb-2">Your earnings</th>
-            <th className="pb-2">Payment</th>
-            <th className="pb-2">Fulfillment</th>
-            <th className="pb-2">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((o) => (
-            <tr key={o.id} className="border-t border-ink/10">
-              <td className="py-2">{o.title}</td>
-              <td className="py-2">{money(o.amountTotal)}</td>
-              <td className="py-2 font-medium">{money(o.creatorPayout)}</td>
-              <td className="py-2"><Badge status={o.paymentStatus} /></td>
-              <td className="py-2"><Badge status={o.fulfillmentStatus} /></td>
-              <td className="py-2 text-ink/50">{new Date(o.createdAt).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Badge({ status }: { status: string }) {
-  const tone =
-    status === "paid" || status === "ordered" || status === "shipped"
-      ? "bg-emerald-500/15 text-emerald-300"
-      : status === "failed"
-      ? "bg-red-500/15 text-red-300"
-      : "bg-ink/10 text-ink/60";
-  return <span className={`rounded-full px-2 py-0.5 text-xs ${tone}`}>{status}</span>;
 }

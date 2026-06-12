@@ -18,6 +18,8 @@ const schema = z.object({
   description: z.string().max(5000).optional(),
   sellPrice: z.number().positive().optional(),
   active: z.boolean().optional(),
+  archived: z.boolean().optional(),
+  paused: z.boolean().optional(),
   // Only honored once, when the product's price was never auto-detected.
   sourcePrice: z.number().positive().optional(),
   variants: z.array(variantSchema).optional(),
@@ -93,6 +95,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       description: body.description,
       sellPrice: body.sellPrice,
       active: body.active,
+      archived: body.archived,
+      // "Refresh & republish" clears the paused/needs-refresh state.
+      ...(body.paused === false ? { paused: false, detectedNewPrice: null } : {}),
+      ...(body.paused === true ? { paused: true } : {}),
       ...(lockNow ? { sourcePrice: newSourcePrice, priceDetected: true } : {}),
     },
   });

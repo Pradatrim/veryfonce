@@ -26,13 +26,46 @@ model User {
   username      String   @unique
   bio           String?
   profilePhoto  String? // URL/path to uploaded avatar
+  tagline       String? // showcase tagline
   // Stripe Connect account id (where this creator's payouts go).
   stripeAccountId String?
+
+  // ── Showcase customization ──
+  template      String   @default("grid")   // grid | editorial | minimal
+  priceDisplay  String   @default("price")  // price | shop | cart
+  themePreset   String   @default("fonce")  // key into THEME_PRESETS (or custom/ombre/image)
+  themeFont     String   @default("fonce")  // key into FONT_SETS
+  themeCustom   String?  // JSON: { custom?, ombre?, image?, textureColors?, live? }
+
+  // ── VIP ──
+  isVip         Boolean  @default(false)
+  vipSince      DateTime?
+  vipPeriod     String?  // monthly | annual
+
+  // ── Insights (real tracking) ──
+  showcaseVisits Int     @default(0)
+  buyClicks      Int     @default(0)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   products      Product[]
   orders        Order[]
+  rewards       Reward[]
+}
+
+// Fonce Rewards ledger — 5% back for VIP, expires 90 days after earning.
+model Reward {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  amount    Float    // dollars earned
+  earnedAt  DateTime @default(now())
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  orderId   String?
+
+  @@index([userId])
 }
 
 // A product imported by a creator from a supplier (e.g. AliExpress).
@@ -64,7 +97,15 @@ model Product {
   // may set sourcePrice one time; after that it is permanently locked.
   priceDetected Boolean @default(true)
 
-  active       Boolean  @default(true)
+  // Source-quality tier (premium | verified | generic), detected on import.
+  sourceTier   String?
+
+  active       Boolean  @default(true)  // live on showcase
+  paused       Boolean  @default(false) // needs refresh (source price changed)
+  archived     Boolean  @default(false) // archived, hidden from showcase
+  detectedNewPrice Float?               // new source price found by Verify Prices
+  views        Int      @default(0)     // product detail views (insights)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
