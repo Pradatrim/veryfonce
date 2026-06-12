@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  THEME_PRESETS, FONT_SETS, applyTheme, buildThemeConfig,
-  isPresetVip, isFontVip, type ThemeConfig,
-} from "@/lib/themes";
+import { THEME_PRESETS, FONT_SETS, isPresetVip, isFontVip } from "@/lib/themes";
 import VipPaywall from "@/components/VipPaywall";
 
 type Product = {
@@ -44,11 +41,8 @@ export default function DashboardClient({ user, products, stats }: { user: User;
   const [paywall, setPaywall] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Apply the saved theme to the page on mount (and when changed).
-  useEffect(() => {
-    applyTheme(buildThemeConfig({ themePreset: preset, themeFont: font, themeCustom: user.themeCustom }));
-  }, [preset, font, user.themeCustom]);
-
+  // NOTE: the theme applies to the public STOREFRONT, not the dashboard. The
+  // dashboard stays Fonce-branded; the swatches preview the storefront colors.
   const link = `fonce.com/@${user.username}`;
 
   async function patch(body: Record<string, unknown>) {
@@ -62,13 +56,11 @@ export default function DashboardClient({ user, products, stats }: { user: User;
   function pickTheme(key: string) {
     if (isPresetVip(key) && !user.isVip) { setPaywall(true); return; }
     setPreset(key);
-    applyTheme({ preset: key, font } as ThemeConfig);
     patch({ themePreset: key });
   }
   function pickFont(key: string) {
     if (isFontVip(key) && !user.isVip) { setPaywall(true); return; }
     setFont(key);
-    applyTheme({ preset, font: key } as ThemeConfig);
     patch({ themeFont: key });
   }
   function pickTemplate(t: string) { setTemplate(t); patch({ template: t }); }
@@ -310,7 +302,10 @@ export default function DashboardClient({ user, products, stats }: { user: User;
           </div>
 
           {/* Products */}
-          <div className="section-head"><h2>Products</h2><span className="meta">{products.length} total</span></div>
+          <div className="section-head">
+            <h2>Products</h2>
+            <button className="btn btn-primary btn-sm" onClick={() => router.push("/add-product")}>+ Add product</button>
+          </div>
           {products.length === 0 ? (
             <div className="empty-state"><h3>No products yet</h3><p>Add your first product to start showcasing.</p></div>
           ) : (

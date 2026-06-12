@@ -1,96 +1,127 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { TierBadge } from "@/components/TierBadge";
+import ShowcaseTheme from "@/components/ShowcaseTheme";
 
 export const dynamic = "force-dynamic";
 
+// Ported from viewShowcase(): applies the creator's theme, then renders products
+// in their chosen template (grid / editorial / minimal) with their price-display
+// preference (price / shop now / cart icon).
 export default async function StorefrontPage({ params }: { params: { username: string } }) {
   const creator = await db.user.findUnique({
     where: { username: params.username.toLowerCase() },
     include: {
       products: {
-        where: { active: true },
+        where: { active: true, paused: false, archived: false },
         orderBy: { createdAt: "desc" },
       },
     },
   });
-
   if (!creator || creator.role === "ADMIN") notFound();
 
+  const products = creator.products.map((p) => ({
+    id: p.id,
+    title: p.title,
+    description: p.description ?? "",
+    listed: p.sellPrice,
+    image: (JSON.parse(p.images) as string[])[0] ?? "",
+  }));
+
+  const href = (id: string) => `/${creator.username}/p/${id}`;
+  const pd = creator.priceDisplay;
+
+  // The whole product card is a Link, so the price slot is presentational only
+  // (no nested anchors / client handlers).
+  function PriceSlot({ listed }: { listed: number }) {
+    if (pd === "shop") {
+      return <span className="shop-now-btn">Shop now</span>;
+    }
+    if (pd === "cart") {
+      return (
+        <div className="showcase-price-cart-row">
+          <div className="price">${listed.toFixed(2)}</div>
+          <span className="showcase-cart-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3 H5 L7 16 H19 L21 8 H6" /><circle cx="9" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" />
+            </svg>
+          </span>
+        </div>
+      );
+    }
+    return <div className="price">${listed.toFixed(2)}</div>;
+  }
+
+  const initial = creator.username.charAt(0).toUpperCase();
+
   return (
-    <main className="mx-auto max-w-2xl px-5 pb-24">
-      {/* Profile header */}
-      <div className="flex flex-col items-center pt-16 text-center animate-rise">
-        <div className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-accent/30 ring-offset-4 ring-offset-transparent">
-          {creator.profilePhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={creator.profilePhoto}
-              alt={creator.name ?? ""}
-              className="h-full w-full object-cover"
-            />
+    <>
+      <ShowcaseTheme
+        username={creator.username}
+        themePreset={creator.themePreset}
+        themeFont={creator.themeFont}
+        themeCustom={creator.themeCustom}
+      />
+      <div className="showcase-page">
+        <div className="container">
+          <div className="showcase-header">
+            {creator.profilePhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={creator.profilePhoto} alt="" className="avatar avatar-large" />
+            ) : (
+              <div className="avatar avatar-large" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 }}>{initial}</div>
+            )}
+            <h1>@{creator.username}</h1>
+            <p className="handle">{creator.tagline || "curated picks"}</p>
+          </div>
+
+          {products.length === 0 ? (
+            <div className="empty-state"><h3>No products yet.</h3><p>This creator hasn&apos;t added anything to their showcase.</p></div>
+          ) : creator.template === "grid" ? (
+            <div className="grid-template">
+              {products.map((p) => (
+                <Link key={p.id} href={href(p.id)} className="product-card">
+                  <div className="img" style={{ backgroundImage: `url('${p.image}')` }} />
+                  <div className="title">{p.title}</div>
+                  <PriceSlot listed={p.listed} />
+                </Link>
+              ))}
+            </div>
+          ) : creator.template === "editorial" ? (
+            <div className="editorial-template">
+              {products.map((p, i) => (
+                <Link key={p.id} href={href(p.id)} className="ed-item">
+                  <div className="img" style={{ backgroundImage: `url('${p.image}')` }} />
+                  <div className="ed-content">
+                    <div className="num">{String(i + 1).padStart(2, "0")}</div>
+                    <h3>{p.title}</h3>
+                    <PriceSlot listed={p.listed} />
+                    <p style={{ color: "var(--fg-muted)", marginBottom: "1.5rem" }}>{p.description}</p>
+                    <span className="btn">View →</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-elevated font-display text-4xl text-accent/50">
-              {(creator.name || creator.username)[0]?.toUpperCase()}
+            <div className="minimal-template">
+              {products.map((p) => (
+                <Link key={p.id} href={href(p.id)} className="min-item">
+                  <div className="img" style={{ backgroundImage: `url('${p.image}')` }} />
+                  <div className="info">
+                    <h4>{p.title}</h4>
+                    <p>{p.description}</p>
+                  </div>
+                  <PriceSlot listed={p.listed} />
+                </Link>
+              ))}
             </div>
           )}
+
+          <footer style={{ marginTop: "4rem", textAlign: "center", fontSize: "0.8rem", color: "var(--fg-dim)" }}>
+            Powered by <Link href="/" style={{ textDecoration: "underline" }}>FONCÉ</Link>
+          </footer>
         </div>
-        <h1 className="mt-5 font-display text-3xl tracking-tight">
-          {creator.name || creator.username}
-        </h1>
-        <p className="mt-1 text-sm text-ink/45">@{creator.username}</p>
-        {creator.bio && (
-          <p className="mt-4 max-w-sm text-pretty text-[15px] leading-relaxed text-ink/70">
-            {creator.bio}
-          </p>
-        )}
       </div>
-
-      {/* Product grid */}
-      <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-2">
-        {creator.products.length === 0 ? (
-          <p className="col-span-2 py-16 text-center text-sm text-ink/40">
-            No products yet.
-          </p>
-        ) : (
-          creator.products.map((p) => {
-            const images = JSON.parse(p.images) as string[];
-            return (
-              <Link
-                key={p.id}
-                href={`/${creator.username}/p/${p.id}`}
-                className="group overflow-hidden rounded-2xl border border-accent/15 bg-elevated/80 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-xl hover:shadow-black/40"
-              >
-                <div className="aspect-square overflow-hidden bg-soft">
-                  {images[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={images[0]}
-                      alt={p.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="line-clamp-2 text-sm font-medium leading-snug">{p.title}</p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="font-display text-base text-ink/80">${p.sellPrice.toFixed(2)}</p>
-                    <TierBadge sourceUrl={p.sourceUrl} supplier={p.supplier} />
-                  </div>
-                </div>
-              </Link>
-            );
-          })
-        )}
-      </div>
-
-      <footer className="mt-20 text-center text-xs text-ink/30">
-        Powered by{" "}
-        <Link href="/" className="font-display tracking-tight underline-offset-2 hover:underline">
-          FONCÉ
-        </Link>
-      </footer>
-    </main>
+    </>
   );
 }
