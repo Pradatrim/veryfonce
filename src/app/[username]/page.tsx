@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import ShowcaseTheme from "@/components/ShowcaseTheme";
 import CartButton from "@/components/CartButton";
 
@@ -20,6 +21,9 @@ export default async function StorefrontPage({ params }: { params: { username: s
     },
   });
   if (!creator || creator.role === "ADMIN") notFound();
+
+  const me = await getCurrentUser();
+  const isOwner = me?.id === creator.id;
 
   const products = creator.products.map((p) => ({
     id: p.id,
@@ -64,6 +68,17 @@ export default async function StorefrontPage({ params }: { params: { username: s
         themeCustom={creator.themeCustom}
       />
       <CartButton />
+      {isOwner && (
+        <div style={{
+          position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center",
+          justifyContent: "space-between", gap: "1rem", padding: "0.6rem 1rem",
+          background: "#0a0a0a", color: "#f5efe4", borderBottom: "1px solid rgba(212,175,55,0.3)",
+          fontSize: "0.85rem",
+        }}>
+          <span style={{ opacity: 0.75 }}>You&apos;re viewing your live showcase</span>
+          <Link href="/dashboard" className="btn btn-sm" style={{ whiteSpace: "nowrap" }}>← Back to dashboard</Link>
+        </div>
+      )}
       <div className="showcase-page">
         <div className="container">
           <div className="showcase-header">
