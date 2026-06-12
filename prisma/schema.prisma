@@ -1,0 +1,149 @@
+// FONCÉ data model
+// ----------------------------------------------------------------------------
+// Provider is SQLite for zero-setup local dev. To deploy on Vercel, change
+// provider to "postgresql" and point DATABASE_URL at a Postgres instance.
+// All fields are kept Postgres-compatible (no SQLite-only types; lists/JSON
+// are stored as JSON strings so the schema ports cleanly).
+// ----------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A user is either the platform OWNER (admin/VIP) or a CREATOR.
+// Customers do NOT need an account — they just check out.
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  role          String   @default("CREATOR") // "ADMIN" | "CREATOR"
+  name          String?
+  // Public handle used for the link-in-bio URL: /<username>
+  username      String   @unique
+  bio           String?
+  profilePhoto  String? // URL/path to uploaded avatar
+  // Stripe Connect account id (where this creator's payouts go).
+  stripeAccountId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products      Product[]
+  orders        Order[]
+}
+
+// A product imported by a creator from a supplier (e.g. AliExpress).
+// IMPORTANT pricing rule:
+//   - sourcePrice  = the ORIGINAL supplier cost. LOCKED. Set at import time
+//                    and NEVER editable by the creator.
+//   - sellPrice    = what the customer pays. The creator's markup. Editable,
+//                    but the API enforces sellPrice >= sourcePrice.
+model Product {
+  id           String   @id @default(cuid())
+  creator      User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creatorId    String
+
+  supplier     String   @default("aliexpress")
+  sourceUrl    String // original product link the creator pasted
+  sourceItemId String? // supplier's product id (used for auto-ordering)
+
+  title        String
+  description  String?
+  images       String   @default("[]") // JSON array of image URLs
+  currency     String   @default("USD")
+
+  // Locked original cost (lowest variant cost, or single price).
+  sourcePrice  Float
+  // Creator's selling price (markup). Must be >= sourcePrice.
+  sellPrice    Float
+
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  variants     Variant[]
+  orders       Order[]
+
+  @@index([creatorId])
+}
+
+// A specific variant of a product (e.g. "Color: Red / Size: M").
+// sourcePrice is LOCKED (original supplier cost for this variant).
+// sellPrice is the creator's per-variant markup (editable, >= sourcePrice).
+model Variant {
+  id           String   @id @default(cuid())
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId    String
+
+  sourceVariantId String? // supplier's sku/variant id, used for auto-ordering
+  name         String // human label, e.g. "Red / M"
+  options      String   @default("{}") // JSON object, e.g. {"Color":"Red","Size":"M"}
+  image        String?
+  sku          String?
+
+  sourcePrice  Float    // LOCKED original cost for this variant
+  sellPrice    Float    // creator markup for this variant
+  stock        Int      @default(0)
+
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders       Order[]
+
+  @@index([productId])
+}
+
+// An order placed by a customer buying through a creator's storefront.
+// The money split + the supplier fulfillment status both live here.
+model Order {
+  id            String   @id @default(cuid())
+
+  creator       User     @relation(fields: [creatorId], references: [id])
+  creatorId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  productId     String
+  variant       Variant? @relation(fields: [variantId], references: [id])
+  variantId     String?
+
+  quantity      Int      @default(1)
+
+  // Customer details (no account required).
+  customerEmail String
+  customerName  String?
+  shipName      String?
+  shipLine1     String?
+  shipLine2     String?
+  shipCity      String?
+  shipState     String?
+  shipPostal    String?
+  shipCountry   String?
+
+  // ── Money breakdown (all in cents to avoid float errors) ──
+  currency      String   @default("USD")
+  amountTotal   Int      // what the customer paid (sellPrice * qty)
+  supplierCost  Int      // what we owe the supplier (sourcePrice * qty)
+  platformFee   Int      // FONCÉ owner's cut (fee % of markup)
+  creatorPayout Int      // what the creator earns (markup - platform fee)
+
+  // ── Payment status ──
+  paymentStatus String   @default("pending") // pending | paid | failed | refunded
+  stripePaymentIntentId String?
+
+  // ── Fulfillment status (auto-ordering to supplier) ──
+  fulfillmentStatus String @default("unfulfilled") // unfulfilled | queued | ordered | shipped | failed
+  supplierOrderId   String? // AliExpress order id once auto-placed
+  trackingNumber    String?
+  fulfillmentError  String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([paymentStatus])
+  @@index([fulfillmentStatus])
+}
