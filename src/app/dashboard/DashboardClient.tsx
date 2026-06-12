@@ -34,7 +34,14 @@ type Order = {
   createdAt: string;
 };
 type Props = {
-  user: { name: string; username: string; bio: string; profilePhoto: string | null; stripeConnected: boolean };
+  user: {
+    name: string;
+    username: string;
+    bio: string;
+    profilePhoto: string | null;
+    stripeConnected: boolean;
+    payoutsReady: boolean;
+  };
   products: Product[];
   orders: Order[];
   stripeLive: boolean;
@@ -63,7 +70,13 @@ export default function DashboardClient({ user, products, orders, stripeLive }: 
 
       {tab === "products" && <ProductsTab products={products} />}
       {tab === "profile" && <ProfileTab user={user} />}
-      {tab === "payouts" && <PayoutsTab connected={user.stripeConnected} stripeLive={stripeLive} />}
+      {tab === "payouts" && (
+        <PayoutsTab
+          connected={user.stripeConnected}
+          payoutsReady={user.payoutsReady}
+          stripeLive={stripeLive}
+        />
+      )}
       {tab === "orders" && <OrdersTab orders={orders} />}
     </div>
   );
@@ -338,7 +351,9 @@ function ProfileTab({ user }: { user: Props["user"] }) {
 }
 
 /* ───────────────────────── Payouts ───────────────────────── */
-function PayoutsTab({ connected, stripeLive }: { connected: boolean; stripeLive: boolean }) {
+function PayoutsTab({
+  connected, payoutsReady, stripeLive,
+}: { connected: boolean; payoutsReady: boolean; stripeLive: boolean }) {
   return (
     <div className="card max-w-lg space-y-3">
       <h2 className="font-medium">Get paid</h2>
@@ -347,8 +362,18 @@ function PayoutsTab({ connected, stripeLive }: { connected: boolean; stripeLive:
           Payments are in <strong>demo mode</strong>. Once the owner adds Stripe keys,
           you&apos;ll connect your bank here to receive your earnings automatically on every sale.
         </p>
+      ) : payoutsReady ? (
+        <p className="text-sm text-green-700">
+          ✓ Your payout account is connected. Your earnings from each sale are sent to you automatically.
+        </p>
       ) : connected ? (
-        <p className="text-sm text-green-700">✓ Your payout account is connected.</p>
+        <>
+          <p className="text-sm text-amber-700">
+            Almost there — your payout setup isn&apos;t finished. Until it is, your share
+            of any sale is held safely and paid once you complete setup.
+          </p>
+          <a className="btn" href="/api/connect/onboard">Finish payout setup</a>
+        </>
       ) : (
         <>
           <p className="text-sm text-ink/60">

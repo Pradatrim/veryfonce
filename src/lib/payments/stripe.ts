@@ -30,6 +30,28 @@ export function isStripeLive(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
+export interface AccountStatus {
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+}
+
+/** Check whether a creator's connected account can receive money yet. */
+export async function getAccountStatus(accountId: string): Promise<AccountStatus | null> {
+  const stripe = getStripe();
+  if (!stripe) return null;
+  try {
+    const a = await stripe.accounts.retrieve(accountId);
+    return {
+      chargesEnabled: Boolean(a.charges_enabled),
+      payoutsEnabled: Boolean(a.payouts_enabled),
+      detailsSubmitted: Boolean(a.details_submitted),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface CheckoutParams {
   orderId: string;
   productTitle: string;
@@ -56,7 +78,18 @@ export async function createCheckout(params: CheckoutParams): Promise<CheckoutRe
     return { url: null, demo: true };
   }
 
-  // Live: a destination charge that automatically splits the money.
+  // Only split to the creator when (a) they have a connected account, (b) it's
+  // finished onboarding and can receive money, and (c) there's an actual payout
+  // to send. Otherwise the payment still succeeds with all funds held by the
+  // platform (owner), and the creator can be paid out once they're set up.
+  let splitToCreator = false;
+  if (params.creatorStripeAccountId && params.ownerTake < params.amountTotal) {
+    const status = await getAccountStatus(params.creatorStripeAccountId);
+    splitToCreator = Boolean(status?.chargesEnabled && status?.payoutsEnabled);
+  }
+
+  // Destination charge: the platform is merchant of record, takes the
+  // application fee (owner's take), and the rest is transferred to the creator.
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     success_url: params.successUrl,
@@ -72,12 +105,12 @@ export async function createCheckout(params: CheckoutParams): Promise<CheckoutRe
         },
       },
     ],
-    payment_intent_data: params.creatorStripeAccountId
+    payment_intent_data: splitToCreator
       ? {
           application_fee_amount: params.ownerTake,
-          transfer_data: { destination: params.creatorStripeAccountId },
+          transfer_data: { destination: params.creatorStripeAccountId! },
         }
-      : undefined, // if creator not yet connected, all funds stay with platform
+      : undefined,
     metadata: { orderId: params.orderId },
   });
 

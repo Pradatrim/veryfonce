@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { isStripeLive } from "@/lib/payments/stripe";
+import { isStripeLive, getAccountStatus } from "@/lib/payments/stripe";
 import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +57,13 @@ export default async function DashboardPage() {
     createdAt: o.createdAt.toISOString(),
   }));
 
+  // Real payout readiness (only meaningful when Stripe is live).
+  let payoutsReady = false;
+  if (isStripeLive() && user.stripeAccountId) {
+    const status = await getAccountStatus(user.stripeAccountId);
+    payoutsReady = Boolean(status?.chargesEnabled && status?.payoutsEnabled);
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-6 pb-24">
       <header className="flex items-center justify-between py-6">
@@ -76,6 +83,7 @@ export default async function DashboardPage() {
           bio: user.bio ?? "",
           profilePhoto: user.profilePhoto,
           stripeConnected: Boolean(user.stripeAccountId),
+          payoutsReady,
         }}
         products={productData}
         orders={orderData}

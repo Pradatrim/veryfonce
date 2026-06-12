@@ -26,8 +26,10 @@ when you add credentials (see below).
 
 ## Deploying live
 
-See **[DEPLOY.md](./DEPLOY.md)** for click-by-click Vercel instructions
-(database + photo storage + deploy, ~15 min, no coding).
+- **[DEPLOY.md](./DEPLOY.md)** — get it on a Vercel URL (database + photo
+  storage + deploy, ~15 min, no coding).
+- **[STRIPE.md](./STRIPE.md)** — turn on real payments + automatic fee-splitting
+  to you and your creators.
 
 ## Run it locally
 
