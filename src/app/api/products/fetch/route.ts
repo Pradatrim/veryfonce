@@ -6,6 +6,9 @@ import { detectSourceTier } from "@/lib/sourceTier";
 
 // Fetch product data from a pasted URL WITHOUT saving it — used to auto-fill the
 // Add Product form. Uses the same ScrapingBee/AliExpress import pipeline.
+// AI extraction renders the page through premium proxies — allow up to 60s.
+export const maxDuration = 60;
+
 const schema = z.object({ url: z.string().url() });
 
 export async function POST(req: Request) {

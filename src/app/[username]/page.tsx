@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import ShowcaseTheme from "@/components/ShowcaseTheme";
+import CartButton from "@/components/CartButton";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export default async function StorefrontPage({ params }: { params: { username: s
         themeFont={creator.themeFont}
         themeCustom={creator.themeCustom}
       />
+      <CartButton />
       <div className="showcase-page">
         <div className="container">
           <div className="showcase-header">

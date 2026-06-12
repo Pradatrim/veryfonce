@@ -82,18 +82,6 @@ export default function DashboardClient({ user, products, stats }: { user: User;
     });
   }
 
-  async function productAction(id: string, body: Record<string, unknown> | "delete") {
-    if (body === "delete") {
-      if (!confirm("Remove this product?")) return;
-      await fetch(`/api/products/${id}`, { method: "DELETE" });
-    } else {
-      await fetch(`/api/products/${id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-      });
-    }
-    router.refresh();
-  }
-
   const pausedCount = products.filter((p) => p.paused && !p.archived).length;
 
   return (
@@ -310,33 +298,7 @@ export default function DashboardClient({ user, products, stats }: { user: User;
             <div className="empty-state"><h3>No products yet</h3><p>Add your first product to start showcasing.</p></div>
           ) : (
             <div className="product-list">
-              {products.map((p) => (
-                <div key={p.id} className={`product-card-mini ${p.paused ? "paused" : ""} ${p.archived ? "archived" : ""}`}>
-                  <div className="img" style={{ backgroundImage: `url('${p.image}')` }} />
-                  <div className="info">
-                    {p.archived ? <span className="paused-badge archived-badge">Archived</span> : p.paused ? <span className="paused-badge">Needs refresh</span> : null}
-                    <h4>{p.title}</h4>
-                    <span className={`source-tier-chip tier-${p.tier.key}`} title={p.tier.description}>
-                      {p.tier.key === "premium" ? "★" : p.tier.key === "verified" ? "✓" : "·"} {p.tier.label} · {p.tier.shortBadge}
-                    </span>
-                    <div className="pricing">
-                      <span>cost ${p.sourcePrice.toFixed(2)}</span>
-                      <span className="listed">listed ${p.sellPrice.toFixed(2)}</span>
-                    </div>
-                    {user.isVip && <div className="product-meta-row"><span className="product-views">{p.views} {p.views === 1 ? "view" : "views"}</span></div>}
-                    {p.paused && p.detectedNewPrice != null && (
-                      <div className="price-change-note">Source price changed:<br />was ${p.sourcePrice.toFixed(2)} → <strong>${p.detectedNewPrice.toFixed(2)}</strong></div>
-                    )}
-                    <div className="actions">
-                      {p.paused && !p.archived && <button className="btn refresh-btn" onClick={() => productAction(p.id, { paused: false })}>Refresh &amp; republish</button>}
-                      {p.archived
-                        ? <button className="btn archive-btn" onClick={() => productAction(p.id, { archived: false })}>Unarchive</button>
-                        : <button className="btn archive-btn" onClick={() => productAction(p.id, { archived: true })}>Archive</button>}
-                      <button className="btn btn-danger remove-btn" onClick={() => productAction(p.id, "delete")}>Remove</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {products.map((p) => <ProductRow key={p.id} product={p} isVip={user.isVip} />)}
             </div>
           )}
         </div>
@@ -344,5 +306,95 @@ export default function DashboardClient({ user, products, stats }: { user: User;
 
       {paywall && <VipPaywall onClose={() => setPaywall(false)} onSuccess={() => { setPaywall(false); router.refresh(); }} />}
     </>
+  );
+}
+
+function ProductRow({ product: p, isVip }: { product: Product; isVip: boolean }) {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(p.title);
+  const [image, setImage] = useState(p.image);
+  const [saving, setSaving] = useState(false);
+
+  async function patch(body: Record<string, unknown> | "delete") {
+    if (body === "delete") {
+      if (!confirm("Remove this product?")) return;
+      await fetch(`/api/products/${p.id}`, { method: "DELETE" });
+    } else {
+      await fetch(`/api/products/${p.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    }
+    router.refresh();
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { alert("Image too large (max 2 MB)."); return; }
+    const reader = new FileReader();
+    reader.onload = () => setImage(String(reader.result));
+    reader.readAsDataURL(f);
+  }
+
+  async function saveEdit() {
+    setSaving(true);
+    await fetch(`/api/products/${p.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, image }),
+    });
+    setSaving(false);
+    setEditing(false);
+    router.refresh();
+  }
+
+  return (
+    <div className={`product-card-mini ${p.paused ? "paused" : ""} ${p.archived ? "archived" : ""}`}>
+      <div className="img" style={{ backgroundImage: `url('${image}')` }} />
+      <div className="info">
+        {p.archived ? <span className="paused-badge archived-badge">Archived</span> : p.paused ? <span className="paused-badge">Needs refresh</span> : null}
+        {editing ? (
+          <div style={{ display: "grid", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+            <div className="image-input-row">
+              <input className="input" value={image.startsWith("data:") ? "" : image} onChange={(e) => setImage(e.target.value)} placeholder="Image URL" />
+              <input type="file" ref={fileRef} accept="image/*" style={{ display: "none" }} onChange={onFile} />
+              <button type="button" className="upload-btn-inline" onClick={() => fileRef.current?.click()}><span>Upload</span></button>
+            </div>
+          </div>
+        ) : (
+          <h4>{p.title}</h4>
+        )}
+        <span className={`source-tier-chip tier-${p.tier.key}`} title={p.tier.description}>
+          {p.tier.key === "premium" ? "★" : p.tier.key === "verified" ? "✓" : "·"} {p.tier.label} · {p.tier.shortBadge}
+        </span>
+        <div className="pricing">
+          <span>cost ${p.sourcePrice.toFixed(2)}</span>
+          <span className="listed">listed ${p.sellPrice.toFixed(2)}</span>
+        </div>
+        {isVip && <div className="product-meta-row"><span className="product-views">{p.views} {p.views === 1 ? "view" : "views"}</span></div>}
+        {p.paused && p.detectedNewPrice != null && (
+          <div className="price-change-note">Source price changed:<br />was ${p.sourcePrice.toFixed(2)} → <strong>${p.detectedNewPrice.toFixed(2)}</strong></div>
+        )}
+        <div className="actions">
+          {editing ? (
+            <>
+              <button className="btn btn-primary btn-sm" onClick={saveEdit} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+              <button className="btn btn-sm" onClick={() => { setEditing(false); setTitle(p.title); setImage(p.image); }}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-sm" onClick={() => setEditing(true)}>Edit</button>
+              {p.paused && !p.archived && <button className="btn refresh-btn" onClick={() => patch({ paused: false })}>Refresh &amp; republish</button>}
+              {p.archived
+                ? <button className="btn archive-btn" onClick={() => patch({ archived: false })}>Unarchive</button>
+                : <button className="btn archive-btn" onClick={() => patch({ archived: true })}>Archive</button>}
+              <button className="btn btn-danger remove-btn" onClick={() => patch("delete")}>Remove</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

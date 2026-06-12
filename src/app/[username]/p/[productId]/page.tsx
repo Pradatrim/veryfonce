@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { TierBadge } from "@/components/TierBadge";
+import CartButton from "@/components/CartButton";
 import ProductBuy from "./ProductBuy";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function ProductPage({
 
   return (
     <main className="mx-auto max-w-5xl px-5 pb-24">
+      <CartButton />
       <header className="py-6">
         <Link
           href={`/${product.creator.username}`}
@@ -81,6 +83,9 @@ export default async function ProductPage({
               id: product.id,
               sellPrice: product.sellPrice,
               currency: product.currency,
+              username: product.creator.username,
+              title: product.title,
+              image: images[0] ?? "",
               variants: product.variants.map((v) => ({
                 id: v.id,
                 name: v.name,

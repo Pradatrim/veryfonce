@@ -252,6 +252,91 @@ function manualShell(url: string): ImportedProduct {
   };
 }
 
+// ── ScrapingBee AI extraction (primary) ─────────────────────────────────────
+// Renders the page (premium proxy + JS) and asks ScrapingBee's AI to pull the
+// title, price, images, and variants from the painted DOM. This works where
+// parsing embedded JSON fails (modern AliExpress loads product data via XHR).
+async function fetchViaScrapingBeeAI(url: string): Promise<ImportedProduct | null> {
+  const key = process.env.SCRAPINGBEE_API_KEY;
+  if (!key) return null;
+  const rules = {
+    title: "the product title",
+    price: "the current selling price in USD as a number only, no currency symbol; if a range, the lowest",
+    main_image: "the main product image URL",
+    images: "array of all product image URLs",
+    variants:
+      "array of the product's variant/sku options; each item an object with a 'name' (e.g. color/size) and a numeric 'price' in USD",
+  };
+  const endpoint =
+    `https://app.scrapingbee.com/api/v1/?api_key=${key}` +
+    `&url=${encodeURIComponent(url)}` +
+    `&render_js=true&premium_proxy=true&country_code=us&wait=5000` +
+    `&ai_extract_rules=${encodeURIComponent(JSON.stringify(rules))}`;
+  try {
+    const res = await fetch(endpoint, { signal: AbortSignal.timeout(58000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+
+    const num = (v: unknown): number | null => {
+      if (typeof v === "number" && isFinite(v)) return v;
+      if (typeof v === "string") {
+        const m = v.replace(/[^0-9.]/g, "");
+        const n = parseFloat(m);
+        return isFinite(n) ? n : null;
+      }
+      return null;
+    };
+
+    const title: string | null = typeof data.title === "string" ? data.title.trim() : null;
+    const basePrice = num(data.price);
+    let images: string[] = Array.isArray(data.images)
+      ? data.images.filter((s: unknown): s is string => typeof s === "string" && s.startsWith("http"))
+      : [];
+    if (images.length === 0 && typeof data.main_image === "string" && data.main_image.startsWith("http")) {
+      images = [data.main_image];
+    }
+
+    const variants: ImportedVariant[] = [];
+    if (Array.isArray(data.variants)) {
+      for (const v of data.variants) {
+        const name = typeof v?.name === "string" ? v.name : typeof v === "string" ? v : null;
+        if (!name) continue;
+        const vp = num(v?.price) ?? basePrice;
+        if (vp == null) continue;
+        variants.push({
+          sourceVariantId: `${extractItemId(url) ?? ""}-${name.replace(/\s+/g, "")}`,
+          name,
+          options: {},
+          sourcePrice: round2(vp),
+          stock: 50,
+          image: images[0],
+        });
+      }
+    }
+
+    // Need at least a title and a price (base or via variants) to count as a hit.
+    const variantMin = variants.length ? Math.min(...variants.map((v) => v.sourcePrice)) : null;
+    const sourcePrice = basePrice ?? variantMin;
+    if (!title || sourcePrice == null) return null;
+
+    return {
+      supplier: "aliexpress",
+      sourceUrl: url,
+      sourceItemId: extractItemId(url),
+      title,
+      description: "Imported via FONCÉ.",
+      images,
+      currency: "USD",
+      sourcePrice: round2(sourcePrice),
+      variants,
+      mode: "scrapingbee",
+      priceDetected: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Fetch strategies ────────────────────────────────────────────────────────
 async function fetchViaScrapingBee(url: string): Promise<string | null> {
   const key = process.env.SCRAPINGBEE_API_KEY;
@@ -289,14 +374,18 @@ async function fetchDirect(url: string): Promise<string | null> {
 export async function importAliExpressProduct(url: string): Promise<ImportedProduct> {
   void isAliExpressUrl; // (kept for future strict validation)
 
-  // 1. ScrapingBee (reliable, when configured).
+  // 1. ScrapingBee AI extraction (primary) — reads the rendered page.
+  const ai = await fetchViaScrapingBeeAI(url);
+  if (ai) return ai;
+
+  // 2. ScrapingBee + embedded-JSON parse (legacy AliExpress runParams).
   const beeHtml = await fetchViaScrapingBee(url);
   if (beeHtml) {
     const parsed = parseRunParams(beeHtml, url, "scrapingbee");
     if (parsed) return parsed;
   }
 
-  // 2. Direct fetch (free, often blocked).
+  // 3. Direct fetch (free, often blocked).
   const directHtml = await fetchDirect(url);
   if (directHtml) {
     const parsed = parseRunParams(directHtml, url, "parsed");

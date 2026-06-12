@@ -16,6 +16,8 @@ const variantSchema = z.object({
 const schema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).optional(),
+  // New image: a URL or a base64 data URL (replaces the product's image).
+  image: z.string().max(2_000_000).optional(),
   sellPrice: z.number().positive().optional(),
   active: z.boolean().optional(),
   archived: z.boolean().optional(),
@@ -96,6 +98,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       sellPrice: body.sellPrice,
       active: body.active,
       archived: body.archived,
+      // Replace the product image (kept as a single-item JSON array).
+      ...(body.image !== undefined ? { images: JSON.stringify([body.image]) } : {}),
       // "Refresh & republish" clears the paused/needs-refresh state.
       ...(body.paused === false ? { paused: false, detectedNewPrice: null } : {}),
       ...(body.paused === true ? { paused: true } : {}),

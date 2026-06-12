@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { addToCart } from "@/lib/cart";
 
 type Variant = { id: string; name: string; sellPrice: number; stock: number; image: string | null };
-type Product = { id: string; sellPrice: number; currency: string; variants: Variant[] };
+type Product = {
+  id: string; sellPrice: number; currency: string;
+  username: string; title: string; image: string; variants: Variant[];
+};
 
 export default function ProductBuy({ product }: { product: Product }) {
   const router = useRouter();
+  const [bagged, setBagged] = useState(false);
   const [variantId, setVariantId] = useState<string | null>(
     product.variants.length > 0 ? product.variants[0].id : null,
   );
@@ -89,9 +94,28 @@ export default function ProductBuy({ product }: { product: Product }) {
       </div>
 
       {!open ? (
-        <button className="btn mt-6 w-full" onClick={() => setOpen(true)}>
-          Buy now
-        </button>
+        <div className="mt-6 space-y-2">
+          <button
+            className="btn-outline w-full"
+            onClick={() => {
+              addToCart({
+                productId: product.id,
+                variantId: variantId ?? undefined,
+                username: product.username,
+                title: product.title,
+                image: selected?.image || product.image,
+                price,
+              }, qty);
+              setBagged(true);
+              setTimeout(() => setBagged(false), 1800);
+            }}
+          >
+            {bagged ? "Added to bag ✓" : "Add to bag"}
+          </button>
+          <button className="btn w-full" onClick={() => setOpen(true)}>
+            Buy now
+          </button>
+        </div>
       ) : (
         <form onSubmit={buy} className="mt-6 space-y-3">
           <p className="font-medium">Shipping details</p>

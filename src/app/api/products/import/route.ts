@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { importAliExpressProduct } from "@/lib/import/aliexpress";
 
+export const maxDuration = 60;
+
 const schema = z.object({ url: z.string().url() });
 
 // Default markup applied at import so a sell price exists immediately.
