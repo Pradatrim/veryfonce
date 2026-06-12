@@ -6,7 +6,7 @@ import { hashPassword, setSession } from "@/lib/auth";
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1).max(80),
+  name: z.string().min(1).max(80).optional(),
   username: z
     .string()
     .min(3)
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const user = await db.user.create({
     data: {
       email,
-      name,
+      name: name ?? username,
       username,
       passwordHash: await hashPassword(password),
       role: "CREATOR",

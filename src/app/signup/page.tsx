@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import SiteHeader from "@/components/SiteHeader";
 
+// Ported from viewSignup(). Wired to the working /api/auth/signup endpoint.
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", username: "", email: "", password: "" });
+  const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,8 +17,7 @@ export default function SignupPage() {
       setForm((f) => ({ ...f, [k]: e.target.value }));
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit() {
     setLoading(true);
     setError("");
     const res = await fetch("/api/auth/signup", {
@@ -35,44 +36,55 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <Link href="/" className="mb-8 text-center font-display text-3xl tracking-tightest">
-        FONCÉ
-      </Link>
-      <h1 className="font-display text-3xl tracking-tight">Create your storefront</h1>
-      <p className="mt-1 text-sm text-ink/60">
-        Your link in bio will be fonce.app/<span className="font-medium">{form.username || "username"}</span>
-      </p>
-
-      <form onSubmit={submit} className="mt-6 space-y-4">
-        <div>
-          <label className="label">Name</label>
-          <input className="input" value={form.name} onChange={set("name")} required />
+    <>
+      <SiteHeader />
+      <div className="wrap">
+        <div className="auth-wrap">
+          <div className="auth-card">
+            <h2>Create your showcase</h2>
+            <p className="sub">Free to start. No credit card.</p>
+            {error && <div id="err"><div className="error">{error}</div></div>}
+            <div className="field">
+              <label>Username</label>
+              <input
+                placeholder="yourname"
+                autoComplete="username"
+                value={form.username}
+                onChange={set("username")}
+              />
+              <div className="hint">
+                This is your link: fonce.com/@{form.username || "username"}
+              </div>
+            </div>
+            <div className="field">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                value={form.email}
+                onChange={set("email")}
+              />
+            </div>
+            <div className="field">
+              <label>Password</label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={set("password")}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </div>
+            <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>
+              {loading ? "Creating…" : "Create account"}
+            </button>
+            <div className="alt">
+              Already have one? <Link href="/login">Log in</Link>
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="label">Username (handle)</label>
-          <input className="input" value={form.username} onChange={set("username")} placeholder="yourname" required />
-        </div>
-        <div>
-          <label className="label">Email</label>
-          <input className="input" type="email" value={form.email} onChange={set("email")} required />
-        </div>
-        <div>
-          <label className="label">Password</label>
-          <input className="input" type="password" value={form.password} onChange={set("password")} placeholder="At least 8 characters" required />
-        </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button className="btn w-full" disabled={loading}>
-          {loading ? "Creating…" : "Create storefront"}
-        </button>
-      </form>
-
-      <p className="mt-6 text-center text-sm text-ink/60">
-        Already have one?{" "}
-        <Link href="/login" className="font-medium underline">
-          Log in
-        </Link>
-      </p>
-    </main>
+      </div>
+    </>
   );
 }

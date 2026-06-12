@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 import { checkPassword, hashPassword, setSession } from "@/lib/auth";
 
 const schema = z.object({
-  email: z.string().email(),
+  // Accept a username OR an email (the ported login form uses username).
+  identifier: z.string().min(1).optional(),
+  email: z.string().optional(),
   password: z.string().min(1),
 });
 
@@ -36,13 +38,21 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
-  const { email, password } = parsed.data;
+  const { password } = parsed.data;
+  const id = (parsed.data.identifier ?? parsed.data.email ?? "").trim();
+  if (!id) {
+    return NextResponse.json({ error: "Enter your username or email" }, { status: 400 });
+  }
 
-  await ensureAdmin(email);
+  // Admin auto-create works by email.
+  if (id.includes("@")) await ensureAdmin(id);
 
-  const user = await db.user.findUnique({ where: { email } });
+  const isEmail = id.includes("@");
+  const user = await db.user.findFirst({
+    where: isEmail ? { email: id } : { username: id.toLowerCase() },
+  });
   if (!user || !(await checkPassword(password, user.passwordHash))) {
-    return NextResponse.json({ error: "Incorrect email or password" }, { status: 401 });
+    return NextResponse.json({ error: "Incorrect username or password" }, { status: 401 });
   }
 
   setSession(user.id);

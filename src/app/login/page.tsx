@@ -3,22 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import SiteHeader from "@/components/SiteHeader";
 
+// Ported from viewLogin(). Wired to the working /api/auth/login endpoint,
+// which accepts a username or email.
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit() {
     setLoading(true);
     setError("");
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
     const data = await res.json();
     setLoading(false);
@@ -31,34 +33,42 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <Link href="/" className="mb-8 text-center font-display text-3xl tracking-tightest">
-        FONCÉ
-      </Link>
-      <h1 className="font-display text-3xl tracking-tight">Log in</h1>
-      <p className="mt-1 text-sm text-ink/60">Creators and the owner sign in here.</p>
-
-      <form onSubmit={submit} className="mt-6 space-y-4">
-        <div>
-          <label className="label">Email</label>
-          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+    <>
+      <SiteHeader />
+      <div className="wrap">
+        <div className="auth-wrap">
+          <div className="auth-card">
+            <h2>Welcome back</h2>
+            <p className="sub">Sign in to your showcase.</p>
+            {error && <div id="err"><div className="error">{error}</div></div>}
+            <div className="field">
+              <label>Username</label>
+              <input
+                autoComplete="username"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </div>
+            <div className="field">
+              <label>Password</label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </div>
+            <button className="btn btn-primary btn-block" onClick={submit} disabled={loading}>
+              {loading ? "Logging in…" : "Log in"}
+            </button>
+            <div className="alt">
+              No account? <Link href="/signup">Create one</Link>
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="label">Password</label>
-          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button className="btn w-full" disabled={loading}>
-          {loading ? "Logging in…" : "Log in"}
-        </button>
-      </form>
-
-      <p className="mt-6 text-center text-sm text-ink/60">
-        New here?{" "}
-        <Link href="/signup" className="font-medium underline">
-          Create a storefront
-        </Link>
-      </p>
-    </main>
+      </div>
+    </>
   );
 }
