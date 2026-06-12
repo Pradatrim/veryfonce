@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { TierBadge } from "@/components/TierBadge";
 import ProductBuy from "./ProductBuy";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,9 @@ export default async function ProductPage({
           <h1 className="mt-2 font-display text-4xl leading-tight tracking-tight">
             {product.title}
           </h1>
+          <div className="mt-3">
+            <TierBadge sourceUrl={product.sourceUrl} supplier={product.supplier} showShipping />
+          </div>
           {product.description && (
             <p className="mt-4 text-[15px] leading-relaxed text-ink/65">{product.description}</p>
           )}

@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     sourcePrice: p.sourcePrice,
     sellPrice: p.sellPrice,
     active: p.active,
+    priceDetected: p.priceDetected,
     sourceUrl: p.sourceUrl,
     variants: p.variants.map((v) => ({
       id: v.id,

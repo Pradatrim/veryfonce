@@ -30,7 +30,9 @@ export async function POST(req: Request) {
 
   const round2 = (n: number) => Math.round(n * 100) / 100;
 
-  // Persist the product with the ORIGINAL prices locked into sourcePrice.
+  // Persist the product. When a real price was detected it's locked into
+  // sourcePrice immediately. When not, priceDetected=false signals the dashboard
+  // to ask the creator for the source price once.
   const product = await db.product.create({
     data: {
       creatorId: user.id,
@@ -41,8 +43,11 @@ export async function POST(req: Request) {
       description: imported.description,
       images: JSON.stringify(imported.images),
       currency: imported.currency,
-      sourcePrice: imported.sourcePrice, // LOCKED
-      sellPrice: round2(imported.sourcePrice * DEFAULT_MARKUP),
+      sourcePrice: imported.sourcePrice, // LOCKED when priceDetected
+      sellPrice: imported.priceDetected ? round2(imported.sourcePrice * DEFAULT_MARKUP) : 0,
+      priceDetected: imported.priceDetected,
+      // A product still needing a price starts hidden until the creator finishes.
+      active: imported.priceDetected,
       variants: {
         create: imported.variants.map((v) => ({
           sourceVariantId: v.sourceVariantId,
@@ -59,5 +64,10 @@ export async function POST(req: Request) {
     include: { variants: true },
   });
 
-  return NextResponse.json({ ok: true, productId: product.id, mode: imported.mode });
+  return NextResponse.json({
+    ok: true,
+    productId: product.id,
+    mode: imported.mode,
+    priceDetected: imported.priceDetected,
+  });
 }

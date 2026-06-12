@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { TierBadge } from "@/components/TierBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -73,9 +74,10 @@ export default async function StorefrontPage({ params }: { params: { username: s
                 </div>
                 <div className="p-4">
                   <p className="line-clamp-2 text-sm font-medium leading-snug">{p.title}</p>
-                  <p className="mt-1.5 font-display text-base text-ink/80">
-                    ${p.sellPrice.toFixed(2)}
-                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="font-display text-base text-ink/80">${p.sellPrice.toFixed(2)}</p>
+                    <TierBadge sourceUrl={p.sourceUrl} supplier={p.supplier} />
+                  </div>
                 </div>
               </Link>
             );

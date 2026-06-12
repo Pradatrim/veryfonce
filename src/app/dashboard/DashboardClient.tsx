@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { TierBadge } from "@/components/TierBadge";
 
 type Variant = {
   id: string;
@@ -21,6 +22,7 @@ type Product = {
   sourcePrice: number;
   sellPrice: number;
   active: boolean;
+  priceDetected: boolean;
   sourceUrl: string;
   variants: Variant[];
 };
@@ -148,6 +150,11 @@ function ProductCard({ product }: { product: Product }) {
   const [variants, setVariants] = useState(product.variants);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  // When the source price wasn't auto-detected, the creator enters it once.
+  const needsPrice = !product.priceDetected;
+  const [sourcePriceInput, setSourcePriceInput] = useState(
+    product.sourcePrice > 0 ? product.sourcePrice : 0,
+  );
 
   function setVariant(id: string, patch: Partial<Variant>) {
     setVariants((vs) => vs.map((v) => (v.id === id ? { ...v, ...patch } : v)));
@@ -163,6 +170,8 @@ function ProductCard({ product }: { product: Product }) {
         title,
         sellPrice,
         active,
+        // Send the entered source price only the first time (when not detected).
+        ...(needsPrice && sourcePriceInput > 0 ? { sourcePrice: sourcePriceInput } : {}),
         variants: variants.map((v) => ({
           id: v.id,
           name: v.name,
@@ -190,19 +199,42 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="card">
+      {needsPrice && (
+        <div className="mb-4 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-300">
+          ⚠ We couldn&apos;t auto-detect this product. Add the title and image, and
+          enter the <strong>price from the source page</strong> below — it locks once you save.
+        </div>
+      )}
       <div className="flex gap-4">
         {product.images[0] && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.images[0]} alt="" className="h-20 w-20 rounded-lg object-cover" />
         )}
         <div className="flex-1">
+          <div className="mb-2">
+            <TierBadge sourceUrl={product.sourceUrl} />
+          </div>
           <input className="input font-medium" value={title} onChange={(e) => setTitle(e.target.value)} />
           <div className="mt-2 flex flex-wrap items-end gap-4">
             <div>
-              <label className="label">Supplier cost (locked)</label>
-              <div className="rounded-lg border border-accent/15 bg-soft px-3 py-2 text-sm text-ink/60">
-                ${product.sourcePrice.toFixed(2)} 🔒
-              </div>
+              <label className="label">
+                {needsPrice ? "Supplier cost (enter once)" : "Supplier cost (locked)"}
+              </label>
+              {needsPrice ? (
+                <input
+                  className="input w-28 border-amber-400/50"
+                  type="number"
+                  step="0.01"
+                  min={0.01}
+                  placeholder="0.00"
+                  value={sourcePriceInput || ""}
+                  onChange={(e) => setSourcePriceInput(Number(e.target.value))}
+                />
+              ) : (
+                <div className="rounded-lg border border-accent/15 bg-soft px-3 py-2 text-sm text-ink/60">
+                  ${product.sourcePrice.toFixed(2)} 🔒
+                </div>
+              )}
             </div>
             <div>
               <label className="label">Your price</label>
@@ -210,12 +242,14 @@ function ProductCard({ product }: { product: Product }) {
                 className="input w-28"
                 type="number"
                 step="0.01"
-                min={product.sourcePrice}
-                value={sellPrice}
+                min={needsPrice ? sourcePriceInput : product.sourcePrice}
+                value={sellPrice || ""}
                 onChange={(e) => setSellPrice(Number(e.target.value))}
               />
             </div>
-            <div className="pb-2 text-xs text-ink/50">{margin(sellPrice, product.sourcePrice)}</div>
+            <div className="pb-2 text-xs text-ink/50">
+              {margin(sellPrice, needsPrice ? sourcePriceInput : product.sourcePrice)}
+            </div>
             <label className="flex items-center gap-2 pb-2 text-sm">
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
               Live

@@ -59,6 +59,10 @@ model Product {
   sourcePrice  Float
   // Creator's selling price (markup). Must be >= sourcePrice.
   sellPrice    Float
+  // True once a real source price is set (auto-detected on import, or entered
+  // once by the creator when auto-detection failed). When false, the creator
+  // may set sourcePrice one time; after that it is permanently locked.
+  priceDetected Boolean @default(true)
 
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
