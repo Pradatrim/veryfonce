@@ -24,12 +24,18 @@ The app runs in **demo mode** with zero external accounts so you can click
 through the entire flow today. Real money and real supplier ordering switch on
 when you add credentials (see below).
 
+## Deploying live
+
+See **[DEPLOY.md](./DEPLOY.md)** for click-by-click Vercel instructions
+(database + photo storage + deploy, ~15 min, no coding).
+
 ## Run it locally
 
 ```bash
-cp .env.example .env        # defaults work out of the box (SQLite + demo mode)
+cp .env.example .env        # then paste a free Postgres URL into DATABASE_URL
+                            # (get one at neon.tech — see DEPLOY.md Step 2)
 npm install
-npm run db:push             # create the local SQLite database
+npm run db:push             # create the database tables
 npm run db:seed             # create the owner + a demo creator
 npm run dev                 # http://localhost:3000
 ```
@@ -50,8 +56,8 @@ Seeded logins (change these in `.env`):
 
 These are the only real-world integrations needed. Each has its hook ready:
 
-1. **Database** — set `DATABASE_URL` to a Postgres URL and change `provider` in
-   `prisma/schema.prisma` to `postgresql`, then `npm run db:push`.
+1. **Database** — already Postgres. Set `DATABASE_URL`; tables are created
+   automatically on deploy (`prisma migrate deploy` runs in the build).
 2. **Payments (Stripe Connect)** — add `STRIPE_SECRET_KEY`,
    `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`. Checkout becomes real and
    the fee split happens automatically. Point Stripe's `checkout.session.completed`

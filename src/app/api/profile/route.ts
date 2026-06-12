@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomBytes } from "crypto";
+import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
-// Where uploaded avatars go in local/dev. On Vercel the filesystem is
-// read-only/ephemeral, so swap this for object storage (S3, Supabase Storage,
-// Vercel Blob) by replacing saveUpload() — the rest stays the same.
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+// Save an uploaded avatar and return its public URL.
+// - Production (Vercel): uses Vercel Blob cloud storage (BLOB_READ_WRITE_TOKEN).
+// - Local dev: writes to public/uploads so no cloud account is needed.
 async function saveUpload(file: File): Promise<string> {
   const ext =
     file.type === "image/png" ? "png"
@@ -19,6 +20,15 @@ async function saveUpload(file: File): Promise<string> {
     : file.type === "image/gif" ? "gif"
     : "jpg";
   const name = `${randomBytes(12).toString("hex")}.${ext}`;
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await put(`avatars/${name}`, file, {
+      access: "public",
+      contentType: file.type,
+    });
+    return blob.url;
+  }
+
   await mkdir(UPLOAD_DIR, { recursive: true });
   const bytes = Buffer.from(await file.arrayBuffer());
   await writeFile(join(UPLOAD_DIR, name), bytes);

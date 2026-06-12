@@ -1,9 +1,8 @@
 // FONCÉ data model
 // ----------------------------------------------------------------------------
-// Provider is SQLite for zero-setup local dev. To deploy on Vercel, change
-// provider to "postgresql" and point DATABASE_URL at a Postgres instance.
-// All fields are kept Postgres-compatible (no SQLite-only types; lists/JSON
-// are stored as JSON strings so the schema ports cleanly).
+// Postgres — works on Vercel and any host. Lists/JSON are stored as JSON
+// strings so the model stays simple and portable. The schema is created
+// automatically on deploy via the migration in prisma/migrations.
 // ----------------------------------------------------------------------------
 
 generator client {
@@ -11,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

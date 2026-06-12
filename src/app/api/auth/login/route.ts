@@ -1,12 +1,34 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { checkPassword, setSession } from "@/lib/auth";
+import { checkPassword, hashPassword, setSession } from "@/lib/auth";
 
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+// On a fresh deploy there is no owner account yet. The first time someone logs
+// in with the ADMIN_EMAIL/ADMIN_PASSWORD from the environment, we create the
+// owner account automatically — no command-line seeding needed in production.
+async function ensureAdmin(email: string) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) return;
+  if (email.toLowerCase() !== adminEmail.toLowerCase()) return;
+
+  const exists = await db.user.findUnique({ where: { email: adminEmail } });
+  if (exists) return;
+  await db.user.create({
+    data: {
+      email: adminEmail,
+      passwordHash: await hashPassword(adminPassword),
+      role: "ADMIN",
+      name: "FONCÉ Owner",
+      username: "fonce-admin",
+    },
+  });
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -15,6 +37,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
   const { email, password } = parsed.data;
+
+  await ensureAdmin(email);
 
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !(await checkPassword(password, user.passwordHash))) {
