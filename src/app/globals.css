@@ -4346,12 +4346,12 @@
   .ig-profile-section {
     display: flex;
     align-items: center;
-    padding: 1rem;
-    gap: 1rem;
+    padding: 0.85rem;
+    gap: 0.75rem;
   }
   .ig-avatar-ring {
-    width: 76px;
-    height: 76px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
     background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
     padding: 2.5px;
@@ -4372,8 +4372,8 @@
     text-align: center;
     font-family: -apple-system, system-ui, sans-serif;
   }
-  .ig-stat .num { font-weight: 600; font-size: 1.05rem; }
-  .ig-stat .label { font-size: 0.78rem; color: #262626; }
+  .ig-stat .num { font-weight: 600; font-size: 0.9rem; }
+  .ig-stat .label { font-size: 0.68rem; color: #262626; }
 
   /* IG bio */
   .ig-bio {

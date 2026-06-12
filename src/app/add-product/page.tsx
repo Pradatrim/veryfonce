@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 
@@ -29,6 +29,15 @@ export default function AddProductPage() {
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // If the session isn't recognized, send them to log in rather than letting
+  // Fetch fail with "Not authorized".
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((d) => { if (!d.user) router.replace("/login"); })
+      .catch(() => {});
+  }, [router]);
+
   const listed = (Number(cost) || 0) + (Number(markup) || 0);
   const fee = Math.round(listed * 0.1 * 100) / 100;
   const profit = Math.round(((Number(markup) || 0) - fee) * 100) / 100;
@@ -42,6 +51,7 @@ export default function AddProductPage() {
     const res = await fetch("/api/products/fetch", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: sourceUrl }),
     });
+    if (res.status === 401) { router.replace("/login"); return; }
     const data = await res.json();
     setFetching(false);
     if (!res.ok) { setStatus(""); setError(data.error ?? "Fetch failed"); return; }
@@ -99,6 +109,7 @@ export default function AddProductPage() {
         variantSku: selected?.sku, variantLabel: selected?.label,
       }),
     });
+    if (res.status === 401) { router.replace("/login"); return; }
     const data = await res.json();
     setSaving(false);
     if (!res.ok) { setError(data.error ?? "Could not add product"); return; }
