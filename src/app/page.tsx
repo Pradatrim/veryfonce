@@ -1,111 +1,93 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
-import { Logo, Star } from "@/components/Logo";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
-export default async function HomePage() {
-  const user = await getCurrentUser();
-
+// Ported 1:1 from viewLanding() in the prototype. The testimonials section only
+// renders when there are site reviews (none yet) — matching the original, which
+// returns '' when state.siteReviews is empty.
+export default function HomePage() {
   return (
-    <main className="min-h-screen">
-      {/* Nav */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <Logo />
-        <nav className="flex items-center gap-2 text-sm sm:gap-4">
-          {user ? (
-            <>
-              <Link
-                href={user.role === "ADMIN" ? "/admin" : "/dashboard"}
-                className="btn-outline btn-sm"
-              >
-                {user.role === "ADMIN" ? "Admin" : "Dashboard"}
-              </Link>
-              <Link href="/api/auth/logout" className="text-ink/55 hover:text-ink">
-                Log out
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="text-ink/70 hover:text-ink">
-                Log in
-              </Link>
-              <Link href="/signup" className="btn btn-sm">
-                Start selling
-              </Link>
-            </>
-          )}
-        </nav>
-      </header>
-
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pb-10 pt-16 sm:pt-24">
-        <div className="animate-rise">
-          <span className="chip">Link-in-bio storefronts</span>
-          <h1 className="mt-6 max-w-4xl font-display text-6xl leading-[0.95] tracking-tightest sm:text-7xl md:text-8xl">
-            Showcase
-            <br />
-            <span className="italic text-accent">what you sell.</span>
-          </h1>
-          <p className="mt-7 max-w-xl text-pretty text-lg leading-relaxed text-ink/65">
-            Paste any product link, set your price, and FONCÉ builds your
-            storefront. Customers buy from your bio — orders ship from the
-            supplier automatically.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link href="/signup" className="btn">
-              Create your storefront
-            </Link>
-            <Link href="/demo" className="btn-outline">
-              See a live example →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Steps */}
-      <section className="mx-auto mt-16 max-w-6xl px-6">
-        <div className="grid gap-px overflow-hidden rounded-3xl border border-accent/15 bg-accent/10 sm:grid-cols-3">
-          {[
-            {
-              n: "01",
-              t: "Import in one paste",
-              d: "Drop a product link. Title, images, price and every variant fill in automatically.",
-            },
-            {
-              n: "02",
-              t: "Your markup, locked costs",
-              d: "Set your selling price. The original supplier cost is locked — your margin is yours.",
-            },
-            {
-              n: "03",
-              t: "Hands-off fulfillment",
-              d: "A customer buys, the order is placed with the supplier automatically. No manual steps.",
-            },
-          ].map((f) => (
-            <div key={f.n} className="bg-elevated/70 p-8 backdrop-blur-sm">
-              <span className="font-display text-sm text-accent">{f.n}</span>
-              <h3 className="mt-3 font-display text-xl tracking-tight">{f.t}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink/60">{f.d}</p>
+    <>
+      <SiteHeader />
+      <div className="wrap">
+        <div>
+          <section className="hero">
+            <div className="container">
+              <div className="eyebrow">For creators · Built for the bio link</div>
+              <h1>
+                Showcase what you
+                <br />
+                <em>actually use</em>
+                <span className="hero-mark">
+                  <svg
+                    className="hero-star"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M 12 2.5 L 14.4 8.8 L 21 9.1 L 15.8 13.2 L 17.6 19.7 L 12 16 L 6.4 19.7 L 8.2 13.2 L 3 9.1 L 9.6 8.8 Z"
+                      fill="#6b5318"
+                      stroke="url(#fonceStarGrad)"
+                      strokeWidth="2.6"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="hero-c">©</span>
+                </span>
+              </h1>
+              <p className="lede">
+                Bring in products from anywhere you shop online. Set your own
+                prices. Get paid when your audience buys. Fonce handles
+                fulfillment, you handle taste.
+              </p>
+              <div className="hero-actions">
+                <Link href="/signup" className="btn btn-primary btn-shimmer">
+                  Create your showcase
+                </Link>
+                <Link href="/phone-demo" className="btn">
+                  See it on a phone →
+                </Link>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </section>
 
-      {/* Quote / brand line */}
-      <section className="mx-auto max-w-4xl px-6 py-28 text-center">
-        <p className="font-display text-3xl italic leading-snug tracking-tight text-ink/80 sm:text-4xl">
-          “Every creator deserves a storefront as considered as their feed.”
-        </p>
-      </section>
-
-      <footer className="border-t border-accent/15">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-10 text-sm text-ink/45 sm:flex-row">
-          <div className="flex items-center gap-2 text-ink/70">
-            <Star className="h-4 w-4" />
-            <span className="font-display text-lg tracking-tight">FONCÉ</span>
-          </div>
-          <span>Storefronts for creators.</span>
+          <section className="features">
+            <div className="container">
+              <div className="features-block">
+                <div className="features-grid">
+                  <div className="feature">
+                    <span className="num">i.</span>
+                    <h3>Curate</h3>
+                    <p>
+                      Bring in products from anywhere you shop online. Add your
+                      own photo, set your markup.
+                    </p>
+                  </div>
+                  <div className="feature">
+                    <span className="num">ii.</span>
+                    <h3>Showcase</h3>
+                    <p>
+                      Choose a layout that fits your brand. Editorial, grid, or
+                      minimal. One link in your bio.
+                    </p>
+                  </div>
+                  <div className="feature">
+                    <span className="num">iii.</span>
+                    <h3>Earn</h3>
+                    <p>
+                      Your audience buys at your price. Keep your markup minus a
+                      small processing fee. We handle fulfillment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-      </footer>
-    </main>
+      </div>
+      <SiteFooter />
+    </>
   );
 }
