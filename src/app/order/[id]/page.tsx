@@ -16,10 +16,10 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
 
   return (
     <main className="mx-auto max-w-md px-5 py-16 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-2xl text-accent">
         {paid ? "✓" : "…"}
       </div>
-      <h1 className="mt-4 text-2xl font-semibold">
+      <h1 className="mt-4 font-display text-3xl tracking-tight">
         {paid ? "Order confirmed" : "Order received"}
       </h1>
       <p className="mt-2 text-sm text-ink/60">

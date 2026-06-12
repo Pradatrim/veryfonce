@@ -54,13 +54,13 @@ export default function DashboardClient({ user, products, orders, stripeLive }: 
 
   return (
     <div>
-      <div className="mb-6 flex gap-1 rounded-full border border-ink/10 bg-white p-1 text-sm">
+      <div className="mb-6 flex gap-1 rounded-full border border-accent/15 bg-elevated/80 p-1 text-sm backdrop-blur-sm">
         {(["products", "profile", "payouts", "orders"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 rounded-full px-4 py-2 capitalize transition ${
-              tab === t ? "bg-ink text-white" : "text-ink/60 hover:text-ink"
+              tab === t ? "bg-accent font-semibold text-[#1a1410]" : "text-ink/60 hover:text-ink"
             }`}
           >
             {t}
@@ -200,7 +200,7 @@ function ProductCard({ product }: { product: Product }) {
           <div className="mt-2 flex flex-wrap items-end gap-4">
             <div>
               <label className="label">Supplier cost (locked)</label>
-              <div className="rounded-lg bg-ink/5 px-3 py-2 text-sm text-ink/60">
+              <div className="rounded-lg border border-accent/15 bg-soft px-3 py-2 text-sm text-ink/60">
                 ${product.sourcePrice.toFixed(2)} 🔒
               </div>
             </div>
@@ -229,7 +229,7 @@ function ProductCard({ product }: { product: Product }) {
           <p className="label">Variants ({variants.length})</p>
           <div className="space-y-2">
             {variants.map((v) => (
-              <div key={v.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-ink/[0.03] px-3 py-2">
+              <div key={v.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-accent/10 bg-soft/60 px-3 py-2">
                 <input
                   className="input flex-1 min-w-[140px]"
                   value={v.name}
@@ -274,7 +274,7 @@ function ProductCard({ product }: { product: Product }) {
         <button className="btn" onClick={save} disabled={saving}>
           {saving ? "Saving…" : "Save changes"}
         </button>
-        <button className="text-sm text-red-600 hover:underline" onClick={remove}>
+        <button className="text-sm text-red-400 hover:underline" onClick={remove}>
           Delete
         </button>
         {msg && <span className="text-sm text-ink/60">{msg}</span>}
@@ -318,7 +318,7 @@ function ProfileTab({ user }: { user: Props["user"] }) {
   return (
     <form onSubmit={save} className="card max-w-lg space-y-4">
       <div className="flex items-center gap-4">
-        <div className="h-20 w-20 overflow-hidden rounded-full bg-ink/10">
+        <div className="h-20 w-20 overflow-hidden rounded-full border border-accent/20 bg-elevated">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="" className="h-full w-full object-cover" />
@@ -363,12 +363,12 @@ function PayoutsTab({
           you&apos;ll connect your bank here to receive your earnings automatically on every sale.
         </p>
       ) : payoutsReady ? (
-        <p className="text-sm text-green-700">
+        <p className="text-sm text-emerald-400">
           ✓ Your payout account is connected. Your earnings from each sale are sent to you automatically.
         </p>
       ) : connected ? (
         <>
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-amber-400">
             Almost there — your payout setup isn&apos;t finished. Until it is, your share
             of any sale is held safely and paid once you complete setup.
           </p>
@@ -424,9 +424,9 @@ function OrdersTab({ orders }: { orders: Order[] }) {
 function Badge({ status }: { status: string }) {
   const tone =
     status === "paid" || status === "ordered" || status === "shipped"
-      ? "bg-green-100 text-green-700"
+      ? "bg-emerald-500/15 text-emerald-300"
       : status === "failed"
-      ? "bg-red-100 text-red-700"
+      ? "bg-red-500/15 text-red-300"
       : "bg-ink/10 text-ink/60";
   return <span className={`rounded-full px-2 py-0.5 text-xs ${tone}`}>{status}</span>;
 }

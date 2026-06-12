@@ -36,10 +36,10 @@ export default function SignupPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <Link href="/" className="mb-8 text-center text-xl font-semibold">
+      <Link href="/" className="mb-8 text-center font-display text-3xl tracking-tightest">
         FONCÉ
       </Link>
-      <h1 className="text-2xl font-semibold">Create your storefront</h1>
+      <h1 className="font-display text-3xl tracking-tight">Create your storefront</h1>
       <p className="mt-1 text-sm text-ink/60">
         Your link in bio will be fonce.app/<span className="font-medium">{form.username || "username"}</span>
       </p>
@@ -61,7 +61,7 @@ export default function SignupPage() {
           <label className="label">Password</label>
           <input className="input" type="password" value={form.password} onChange={set("password")} placeholder="At least 8 characters" required />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
         <button className="btn w-full" disabled={loading}>
           {loading ? "Creating…" : "Create storefront"}
         </button>

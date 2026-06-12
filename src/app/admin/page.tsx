@@ -52,13 +52,13 @@ export default async function AdminPage() {
     <main className="mx-auto max-w-5xl px-6 pb-24">
       <header className="flex items-center justify-between py-6">
         <div>
-          <Link href="/" className="text-xl font-semibold">FONCÉ</Link>
-          <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs text-white">OWNER</span>
+          <Link href="/" className="font-display text-2xl tracking-tightest">FONCÉ</Link>
+          <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-[#1a1410]">OWNER</span>
         </div>
         <Link href="/api/auth/logout" className="text-sm text-ink/60 hover:text-ink">Log out</Link>
       </header>
 
-      <h1 className="text-2xl font-semibold">Income & analytics</h1>
+      <h1 className="font-display text-4xl tracking-tight">Income &amp; analytics</h1>
       <p className="mt-1 text-sm text-ink/60">Everything the platform earns, across all creators.</p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -93,7 +93,7 @@ export default async function AdminPage() {
                     <td className="py-2 font-medium">{c.name}</td>
                     <td className="py-2">{c.orders}</td>
                     <td className="py-2">{formatMoney(c.revenue)}</td>
-                    <td className="py-2 font-medium text-green-700">{formatMoney(c.ownerCut)}</td>
+                    <td className="py-2 font-medium text-emerald-400">{formatMoney(c.ownerCut)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -127,7 +127,7 @@ export default async function AdminPage() {
                     <td className="py-2">{o.creator.name || o.creator.username}</td>
                     <td className="py-2">{o.product.title}</td>
                     <td className="py-2">{formatMoney(o.amountTotal)}</td>
-                    <td className="py-2 font-medium text-green-700">{formatMoney(o.platformFee)}</td>
+                    <td className="py-2 font-medium text-emerald-400">{formatMoney(o.platformFee)}</td>
                     <td className="py-2 text-ink/50">{formatMoney(o.supplierCost)}</td>
                     <td className="py-2 capitalize">{o.fulfillmentStatus}</td>
                   </tr>
@@ -145,9 +145,9 @@ function Stat({
   label, value, highlight, alert,
 }: { label: string; value: string; highlight?: boolean; alert?: boolean }) {
   return (
-    <div className={`card ${highlight ? "bg-ink text-white" : ""} ${alert ? "border-red-300" : ""}`}>
-      <p className={`text-xs uppercase tracking-wide ${highlight ? "text-white/60" : "text-ink/50"}`}>{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${alert ? "text-red-600" : ""}`}>{value}</p>
+    <div className={`card ${highlight ? "!border-accent/40 bg-accent/10" : ""} ${alert ? "!border-red-500/40" : ""}`}>
+      <p className={`text-xs uppercase tracking-wide ${highlight ? "text-accent/80" : "text-ink/50"}`}>{label}</p>
+      <p className={`mt-1 font-display text-3xl tracking-tight ${highlight ? "text-gradient-gold" : alert ? "text-red-400" : ""}`}>{value}</p>
     </div>
   );
 }

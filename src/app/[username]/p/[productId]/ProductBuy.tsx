@@ -55,10 +55,10 @@ export default function ProductBuy({ product }: { product: Product }) {
 
   return (
     <div className="mt-6">
-      <p className="text-2xl font-semibold">${price.toFixed(2)}</p>
+      <p className="font-display text-3xl tracking-tight">${price.toFixed(2)}</p>
 
       {product.variants.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-5">
           <p className="label">Options</p>
           <div className="flex flex-wrap gap-2">
             {product.variants.map((v) => (
@@ -66,8 +66,10 @@ export default function ProductBuy({ product }: { product: Product }) {
                 key={v.id}
                 onClick={() => setVariantId(v.id)}
                 disabled={v.stock <= 0}
-                className={`rounded-full border px-3 py-1.5 text-sm transition disabled:opacity-30 ${
-                  variantId === v.id ? "border-ink bg-ink text-white" : "border-ink/20 hover:border-ink/50"
+                className={`rounded-full border px-4 py-2 text-sm transition-all disabled:opacity-30 ${
+                  variantId === v.id
+                    ? "border-accent bg-accent text-[#1a1410]"
+                    : "border-accent/20 bg-soft hover:border-accent/50"
                 }`}
               >
                 {v.name}
@@ -103,7 +105,7 @@ export default function ProductBuy({ product }: { product: Product }) {
             <input className="input" placeholder="Postal code" value={form.postal} onChange={set("postal")} required />
             <input className="input" placeholder="Country (e.g. US)" value={form.country} onChange={set("country")} required />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-400">{error}</p>}
           <button className="btn w-full" disabled={loading}>
             {loading ? "Processing…" : `Pay $${(price * qty).toFixed(2)}`}
           </button>

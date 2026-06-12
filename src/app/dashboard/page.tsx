@@ -67,7 +67,7 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 pb-24">
       <header className="flex items-center justify-between py-6">
-        <Link href="/" className="text-xl font-semibold">FONCÉ</Link>
+        <Link href="/" className="font-display text-2xl tracking-tightest">FONCÉ</Link>
         <nav className="flex items-center gap-3 text-sm">
           <Link href={`/${user.username}`} className="btn-outline" target="_blank">
             View my storefront
