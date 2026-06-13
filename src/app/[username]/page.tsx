@@ -27,7 +27,7 @@ export default async function StorefrontPage({
       },
     },
   });
-  if (!creator || creator.role === "ADMIN") notFound();
+  if (!creator || creator.role !== "CREATOR") notFound();
 
   // Show the Back-to-dashboard bar when the viewer is the owner (session check)
   // OR when they arrived via the dashboard's "view live" link (?owner=1) — the

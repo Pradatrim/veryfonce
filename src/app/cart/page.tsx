@@ -12,7 +12,7 @@ export default function CartPage() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", name: "", line1: "", line2: "", city: "", state: "", postal: "", country: "US" });
+  const [form, setForm] = useState({ email: "", password: "", name: "", line1: "", line2: "", city: "", state: "", postal: "", country: "US" });
 
   useEffect(() => {
     const update = () => setItems(getCart());
@@ -30,6 +30,19 @@ export default function CartPage() {
     e.preventDefault();
     setCheckingOut(true);
     setError("");
+
+    // Require an account to check out (creates one or signs in).
+    const reg = await fetch("/api/customer/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: form.email, password: form.password, name: form.name }),
+    });
+    if (!reg.ok) {
+      const d = await reg.json().catch(() => ({}));
+      setCheckingOut(false);
+      setError(d.error ?? "Couldn't create your account");
+      return;
+    }
+
     // Place each cart item as an order against its creator's storefront.
     let lastRedirect: string | null = null;
     for (const it of items) {
@@ -93,6 +106,10 @@ export default function CartPage() {
                 <form onSubmit={placeOrder} style={{ marginTop: "1rem", display: "grid", gap: ".75rem" }}>
                   <p style={{ fontWeight: 600 }}>Shipping details</p>
                   <input className="input" placeholder="Email" type="email" value={form.email} onChange={set("email")} required />
+                  <input className="input" placeholder="Create a password" type="password" value={form.password} onChange={set("password")} autoComplete="new-password" required />
+                  <p style={{ fontSize: ".75rem", color: "var(--fg-dim)", margin: "-.25rem 0 .25rem" }}>
+                    Checking out creates your account to track this order. Already have one? Use your password.
+                  </p>
                   <input className="input" placeholder="Full name" value={form.name} onChange={set("name")} required />
                   <input className="input" placeholder="Address" value={form.line1} onChange={set("line1")} required />
                   <input className="input" placeholder="Apt, suite (optional)" value={form.line2} onChange={set("line2")} />
