@@ -71,6 +71,8 @@ const patchSchema = z.object({
   themePreset: z.string().max(20).optional(),
   themeFont: z.string().max(20).optional(),
   themeCustom: z.string().max(20000).nullable().optional(),
+  // Profile photo as a URL or base64 data URL (works with no cloud storage).
+  profilePhoto: z.string().max(4_000_000).optional(),
   removePhoto: z.boolean().optional(),
 });
 
@@ -96,6 +98,7 @@ export async function PATCH(req: Request) {
   if (b.themePreset !== undefined) data.themePreset = b.themePreset;
   if (b.themeFont !== undefined) data.themeFont = b.themeFont;
   if (b.themeCustom !== undefined) data.themeCustom = b.themeCustom;
+  if (b.profilePhoto !== undefined) data.profilePhoto = b.profilePhoto;
   if (b.removePhoto) data.profilePhoto = null;
 
   await db.user.update({ where: { id: user.id }, data });

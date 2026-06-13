@@ -40,6 +40,7 @@ export default function DashboardClient({ user, products, stats }: { user: User;
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [paywall, setPaywall] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
 
   // NOTE: the theme applies to the public STOREFRONT, not the dashboard. The
   // dashboard stays Fonce-branded; the swatches preview the storefront colors.
@@ -56,7 +57,16 @@ export default function DashboardClient({ user, products, stats }: { user: User;
     const res = await fetch("/api/profile", {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    if (res.ok) router.refresh();
+    if (res.status === 401) { router.replace("/login"); return false; }
+    if (res.ok) {
+      setSaveMsg("Saved ✓");
+      setTimeout(() => setSaveMsg(""), 1500);
+      router.refresh();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setSaveMsg(d.error ?? "Couldn't save");
+      setTimeout(() => setSaveMsg(""), 2500);
+    }
     return res.ok;
   }
 
@@ -76,10 +86,15 @@ export default function DashboardClient({ user, products, stats }: { user: User;
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    const fd = new FormData();
-    fd.set("photo", f);
-    const res = await fetch("/api/profile", { method: "POST", body: fd });
-    if (res.ok) router.refresh();
+    if (f.size > 3 * 1024 * 1024) { setSaveMsg("Photo too large (max 3 MB)"); return; }
+    if (!f.type.startsWith("image/")) { setSaveMsg("Choose an image file"); return; }
+    // Store as a base64 data URL so it works with no cloud storage configured.
+    const dataUrl: string = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsDataURL(f);
+    });
+    await patch({ profilePhoto: dataUrl });
   }
   async function removePhoto() { await patch({ removePhoto: true }); }
 
@@ -310,6 +325,17 @@ export default function DashboardClient({ user, products, stats }: { user: User;
           )}
         </div>
       </div>
+
+      {saveMsg && (
+        <div style={{
+          position: "fixed", bottom: "1.25rem", left: "50%", transform: "translateX(-50%)",
+          zIndex: 80, background: "#161616", color: "#f5efe4",
+          border: "1px solid rgba(212,175,55,0.4)", borderRadius: 999,
+          padding: "0.5rem 1.1rem", fontSize: "0.85rem", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+        }}>
+          {saveMsg}
+        </div>
+      )}
 
       {paywall && <VipPaywall onClose={() => setPaywall(false)} onSuccess={() => { setPaywall(false); router.refresh(); }} />}
     </>
