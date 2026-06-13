@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { buildThemeConfig, themeToCss } from "@/lib/themes";
 import ShowcaseTheme from "@/components/ShowcaseTheme";
 import CartButton from "@/components/CartButton";
-import OwnerBar from "@/components/OwnerBar";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,10 @@ export default async function StorefrontPage({ params }: { params: { username: s
     },
   });
   if (!creator || creator.role === "ADMIN") notFound();
+
+  // Server-side owner check — reliable (reads the session cookie during render).
+  const me = await getCurrentUser();
+  const isOwner = me?.id === creator.id;
 
   const products = creator.products.map((p) => ({
     id: p.id,
@@ -68,7 +72,30 @@ export default async function StorefrontPage({ params }: { params: { username: s
         themeFont={creator.themeFont}
         themeCustom={creator.themeCustom}
       />
-      <OwnerBar username={creator.username} />
+      {isOwner && (
+        <div style={{
+          position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center",
+          justifyContent: "space-between", gap: "0.75rem",
+          padding: "0.55rem 1rem", paddingRight: "4rem",
+          background: "#0a0a0a", color: "#f5efe4",
+          borderBottom: "1px solid rgba(212,175,55,0.3)", fontSize: "0.82rem",
+        }}>
+          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <radialGradient id="ownerStarGrad" cx="35%" cy="28%" r="78%">
+                  <stop offset="0%" stopColor="#fce99a" /><stop offset="35%" stopColor="#ecc960" />
+                  <stop offset="70%" stopColor="#d4af37" /><stop offset="100%" stopColor="#7e6520" />
+                </radialGradient>
+              </defs>
+              <path d="M 12 2.5 L 14.4 8.8 L 21 9.1 L 15.8 13.2 L 17.6 19.7 L 12 16 L 6.4 19.7 L 8.2 13.2 L 3 9.1 L 9.6 8.8 Z"
+                fill="#6b5318" stroke="url(#ownerStarGrad)" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontFamily: "var(--font-display, 'Fraunces', serif)", color: "#d4af37", fontSize: "1.15rem", letterSpacing: "-0.02em" }}>FONCÉ</span>
+          </Link>
+          <Link href="/dashboard" className="btn btn-sm" style={{ whiteSpace: "nowrap" }}>Back to dashboard</Link>
+        </div>
+      )}
       <CartButton />
       <div className="showcase-page">
         <div className="container">
