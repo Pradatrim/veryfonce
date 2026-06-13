@@ -10,14 +10,12 @@ type Me = { role: string; username: string } | null;
 // they can never get "stuck" on a public page.
 export default function SiteHeader() {
   const [me, setMe] = useState<Me>(null);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
       .then((d) => setMe(d.user))
-      .catch(() => setMe(null))
-      .finally(() => setLoaded(true));
+      .catch(() => setMe(null));
   }, []);
 
   return (
@@ -44,7 +42,7 @@ export default function SiteHeader() {
             </Link>
           </div>
           <div className="nav-actions" id="nav-actions">
-            {!loaded ? null : me && me.role === "CREATOR" ? (
+            {me && me.role === "CREATOR" ? (
               <>
                 <CartButton variant="inline" />
                 <Link href="/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
