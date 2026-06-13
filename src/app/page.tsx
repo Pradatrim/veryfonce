@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import SiteHeader from "@/components/SiteHeader";
+import AppHeader from "@/components/AppHeader";
 import SiteFooter from "@/components/SiteFooter";
 
 // Ported 1:1 from viewLanding() in the prototype. The testimonials section only
@@ -13,7 +13,7 @@ export default async function HomePage() {
   const loggedInCreator = Boolean(me && me.role === "CREATOR");
   return (
     <>
-      <SiteHeader />
+      <AppHeader />
       <div className="wrap">
         <div>
           <section className="hero">

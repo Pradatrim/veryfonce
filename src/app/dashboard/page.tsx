@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { detectSourceTier } from "@/lib/sourceTier";
-import SiteHeader from "@/components/SiteHeader";
+import AppHeader from "@/components/AppHeader";
 import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
 
   return (
     <>
-    <SiteHeader />
+    <AppHeader />
     <DashboardClient
       user={{
         username: user.username,

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import SiteHeader from "@/components/SiteHeader";
 
 // Wired to /api/auth/login (accepts username or email).
 export default function LoginForm() {
@@ -33,7 +32,6 @@ export default function LoginForm() {
 
   return (
     <>
-      <SiteHeader />
       <div className="wrap">
         <div className="auth-wrap">
           <div className="auth-card">
