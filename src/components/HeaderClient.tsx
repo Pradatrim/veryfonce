@@ -8,14 +8,32 @@ import { cartCount, CART_EVENT } from "@/lib/cart";
 // always correct and instant — no flaky client /api/me fetch. Only the drawer
 // open/close and the cart count are client state.
 export default function HeaderClient({
-  loggedIn,
-  role,
+  loggedIn: initialLoggedIn,
+  role: initialRole,
 }: {
   loggedIn: boolean;
   role?: string;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [count, setCount] = useState(0);
+  // Start from the server-rendered auth state (instant, correct on fresh loads),
+  // then re-verify on the client so a STALE cached page can't show the wrong
+  // (logged-out) nav. Whichever is current wins — no false logouts.
+  const [loggedIn, setLoggedIn] = useState(initialLoggedIn);
+  const [role, setRole] = useState(initialRole);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        setLoggedIn(Boolean(d.user));
+        setRole(d.user?.role);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     const update = () => setCount(cartCount());

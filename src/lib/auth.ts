@@ -18,30 +18,41 @@ export function sessionCookieOptions() {
   };
 }
 
-// The signed cookie value for a user id. Exported so route handlers can set it
-// directly on their NextResponse (the most reliable way to set cookies).
-export function signSession(userId: string): string {
-  return sign(userId);
+export interface SessionUser {
+  id: string;
+  role: string;
+  username: string;
 }
 
 function secret(): string {
   return process.env.AUTH_SECRET || "dev-insecure-secret-change-me";
 }
 
-// A session token is "<userId>.<hmac>". The HMAC binds the id to our secret so
-// the cookie cannot be forged client-side.
-function sign(userId: string): string {
-  const sig = createHmac("sha256", secret()).update(userId).digest("hex");
-  return `${userId}.${sig}`;
+// A session token is "<base64url(JSON{id,role,username})>.<hmac>". Carrying the
+// role + username in the (signed) cookie means "are you logged in?" can be
+// answered from the cookie alone — no database call — so a DB hiccup on Vercel
+// can never falsely log you out.
+function b64url(s: string): string {
+  return Buffer.from(s, "utf8").toString("base64url");
+}
+function sign(payload: string): string {
+  const sig = createHmac("sha256", secret()).update(payload).digest("hex");
+  return `${payload}.${sig}`;
 }
 
-function verify(token: string | undefined): string | null {
+// The signed cookie value for a user. Exported so route handlers can set it
+// directly on their NextResponse (the most reliable way to set cookies).
+export function signSession(user: SessionUser): string {
+  return sign(b64url(JSON.stringify({ id: user.id, role: user.role, username: user.username })));
+}
+
+function verify(token: string | undefined): SessionUser | null {
   if (!token) return null;
   const idx = token.lastIndexOf(".");
   if (idx < 0) return null;
-  const userId = token.slice(0, idx);
+  const payload = token.slice(0, idx);
   const sig = token.slice(idx + 1);
-  const expected = createHmac("sha256", secret()).update(userId).digest("hex");
+  const expected = createHmac("sha256", secret()).update(payload).digest("hex");
   try {
     const a = Buffer.from(sig, "hex");
     const b = Buffer.from(expected, "hex");
@@ -49,7 +60,22 @@ function verify(token: string | undefined): string | null {
   } catch {
     return null;
   }
-  return userId;
+  try {
+    const obj = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (obj && typeof obj.id === "string" && typeof obj.role === "string") {
+      return { id: obj.id, role: obj.role, username: obj.username ?? "" };
+    }
+    // Back-compat: an old "<userId>.<hmac>" cookie verified above — treat the
+    // payload as the raw id (role/username unknown; resolved via DB by callers).
+    return { id: payload, role: "CREATOR", username: "" };
+  } catch {
+    return { id: payload, role: "CREATOR", username: "" };
+  }
+}
+
+/** Logged-in user FROM THE COOKIE ONLY (no DB). Use for nav / auth display. */
+export function getSessionUser(): SessionUser | null {
+  return verify(cookies().get(COOKIE_NAME)?.value);
 }
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -60,26 +86,15 @@ export async function checkPassword(plain: string, hash: string): Promise<boolea
   return bcrypt.compare(plain, hash);
 }
 
-export function setSession(userId: string) {
-  cookies().set(COOKIE_NAME, sign(userId), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: MAX_AGE,
-  });
-}
-
 export function clearSession() {
   cookies().delete(COOKIE_NAME);
 }
 
-/** Returns the logged-in user (or null). Safe to call in server components. */
+/** Full user record from the DB (needs the database). Use for page data. */
 export async function getCurrentUser() {
-  const token = cookies().get(COOKIE_NAME)?.value;
-  const userId = verify(token);
-  if (!userId) return null;
-  return db.user.findUnique({ where: { id: userId } });
+  const session = getSessionUser();
+  if (!session) return null;
+  return db.user.findUnique({ where: { id: session.id } });
 }
 
 /** Throws-style guard for API routes; returns the user or null. */

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 
-// Never cache — must reflect the live session every time.
+// Never cache. Reads login state from the signed cookie ONLY (no DB), so it's
+// fast and can never falsely report logged-out due to a database hiccup.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Lightweight current-user lookup for client components (the nav header).
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ user: null });
-  return NextResponse.json({ user: { role: user.role, username: user.username } });
+  const s = getSessionUser();
+  if (!s) return NextResponse.json({ user: null });
+  return NextResponse.json({ user: { role: s.role, username: s.username } });
 }

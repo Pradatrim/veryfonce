@@ -1,10 +1,11 @@
-import { getCurrentUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import HeaderClient from "@/components/HeaderClient";
 
-// Server component: reads the session during render and hands the real auth
-// state to the client nav. Because it's server-rendered, the nav (the 3-line
-// menu, Dashboard, Log out) is always correct and instant — no /api/me fetch.
+// Server component: reads the session from the signed cookie (no DB) and hands
+// the real auth state to the client nav — instant, correct, and immune to
+// database hiccups. The client nav also re-verifies, so a stale cached page
+// can never show the wrong (logged-out) header.
 export default async function AppHeader() {
-  const user = await getCurrentUser();
-  return <HeaderClient loggedIn={Boolean(user)} role={user?.role} />;
+  const s = getSessionUser();
+  return <HeaderClient loggedIn={Boolean(s)} role={s?.role} />;
 }

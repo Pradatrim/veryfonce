@@ -60,6 +60,6 @@ export async function POST(req: Request) {
   // Set the session cookie directly on the response — most reliable in route
   // handlers (the indirect cookies().set() can be dropped in some environments).
   const res = NextResponse.json({ ok: true, role: user.role });
-  res.cookies.set(COOKIE_NAME, signSession(user.id), sessionCookieOptions());
+  res.cookies.set(COOKIE_NAME, signSession(user), sessionCookieOptions());
   return res;
 }
