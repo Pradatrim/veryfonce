@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { hashPassword, setSession } from "@/lib/auth";
+import { hashPassword, COOKIE_NAME, signSession, sessionCookieOptions } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 const schema = z.object({
   email: z.string().email(),
@@ -47,6 +49,7 @@ export async function POST(req: Request) {
     },
   });
 
-  setSession(user.id);
-  return NextResponse.json({ ok: true, username: user.username });
+  const res = NextResponse.json({ ok: true, username: user.username });
+  res.cookies.set(COOKIE_NAME, signSession(user.id), sessionCookieOptions());
+  return res;
 }

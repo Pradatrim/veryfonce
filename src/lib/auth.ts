@@ -3,8 +3,26 @@ import { createHmac, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 
-const COOKIE_NAME = "fonce_session";
+export const COOKIE_NAME = "fonce_session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
+// Cookie options used everywhere a session cookie is written. secure:true only
+// in production (HTTPS). sameSite lax so it's sent on same-site requests.
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: MAX_AGE,
+  };
+}
+
+// The signed cookie value for a user id. Exported so route handlers can set it
+// directly on their NextResponse (the most reliable way to set cookies).
+export function signSession(userId: string): string {
+  return sign(userId);
+}
 
 function secret(): string {
   return process.env.AUTH_SECRET || "dev-insecure-secret-change-me";

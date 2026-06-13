@@ -628,6 +628,11 @@
   }
   .btn-primary:hover { background: var(--accent-bright); border-color: var(--accent-bright); color: var(--bg); }
   .btn-ghost { border-color: transparent; }
+  /* Nav links (Dashboard / Log out): same color, brighten on hover/tap. */
+  .nav-link { color: #f5efe4; border-color: transparent; background: transparent; }
+  .nav-link:hover,
+  .nav-link:active,
+  .nav-link:focus { color: #ecc960; border-color: transparent; background: rgba(212,175,55,0.10); }
   .btn-sm { padding: 0.45rem 1rem; font-size: 0.85rem; }
   .btn-block { width: 100%; }
   .btn-danger:hover { border-color: var(--danger); color: var(--danger); }

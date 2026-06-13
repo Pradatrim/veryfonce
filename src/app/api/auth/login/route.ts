@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { checkPassword, hashPassword, setSession } from "@/lib/auth";
+import { checkPassword, hashPassword, COOKIE_NAME, signSession, sessionCookieOptions } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 const schema = z.object({
   // Accept a username OR an email (the ported login form uses username).
@@ -55,6 +57,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Incorrect username or password" }, { status: 401 });
   }
 
-  setSession(user.id);
-  return NextResponse.json({ ok: true, role: user.role });
+  // Set the session cookie directly on the response — most reliable in route
+  // handlers (the indirect cookies().set() can be dropped in some environments).
+  const res = NextResponse.json({ ok: true, role: user.role });
+  res.cookies.set(COOKIE_NAME, signSession(user.id), sessionCookieOptions());
+  return res;
 }

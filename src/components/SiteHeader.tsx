@@ -45,8 +45,8 @@ export default function SiteHeader() {
             {me && me.role === "CREATOR" ? (
               <>
                 <CartButton variant="inline" />
-                <Link href="/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
-                <Link href="/api/auth/logout" className="btn btn-sm">Log out</Link>
+                <Link href="/dashboard" className="btn btn-ghost btn-sm nav-link">Dashboard</Link>
+                <Link href="/api/auth/logout" className="btn btn-ghost btn-sm nav-link">Log out</Link>
               </>
             ) : me && me.role === "ADMIN" ? (
               <>
