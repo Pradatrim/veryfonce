@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { isPresetVip, isFontVip } from "@/lib/themes";
 
+export const dynamic = "force-dynamic";
+
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);

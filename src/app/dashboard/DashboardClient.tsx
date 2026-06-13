@@ -57,7 +57,11 @@ export default function DashboardClient({ user, products, stats }: { user: User;
     const res = await fetch("/api/profile", {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    if (res.status === 401) { router.replace("/login"); return false; }
+    if (res.status === 401) {
+      setSaveMsg("Session expired — log out and back in, then try again");
+      setTimeout(() => setSaveMsg(""), 4000);
+      return false;
+    }
     if (res.ok) {
       setSaveMsg("Saved ✓");
       setTimeout(() => setSaveMsg(""), 1500);
