@@ -633,6 +633,10 @@
   .nav-link:hover,
   .nav-link:active,
   .nav-link:focus { color: #ecc960; border-color: transparent; background: rgba(212,175,55,0.10); }
+  /* Inline cart in the nav: match the nav-button height so it sits cleanly
+     between the header lines. */
+  .nav-actions .cart-btn { padding: 0.45rem 0.6rem; }
+  .nav-actions .cart-btn svg { width: 20px; height: 20px; display: block; }
   .btn-sm { padding: 0.45rem 1rem; font-size: 0.85rem; }
   .btn-block { width: 100%; }
   .btn-danger:hover { border-color: var(--danger); color: var(--danger); }
