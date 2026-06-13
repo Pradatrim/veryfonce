@@ -28,8 +28,22 @@ export default function OwnerBar({ username }: { username: string }) {
         borderBottom: "1px solid rgba(212,175,55,0.3)", fontSize: "0.82rem",
       }}
     >
-      <Link href="/" className="brand-text" style={{ fontFamily: "var(--font-display, 'Fraunces', serif)", color: "#d4af37", fontSize: "1.15rem", textDecoration: "none", letterSpacing: "-0.02em" }}>
-        FONCÉ
+      <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <radialGradient id="ownerStarGrad" cx="35%" cy="28%" r="78%">
+              <stop offset="0%" stopColor="#fce99a" />
+              <stop offset="35%" stopColor="#ecc960" />
+              <stop offset="70%" stopColor="#d4af37" />
+              <stop offset="100%" stopColor="#7e6520" />
+            </radialGradient>
+          </defs>
+          <path d="M 12 2.5 L 14.4 8.8 L 21 9.1 L 15.8 13.2 L 17.6 19.7 L 12 16 L 6.4 19.7 L 8.2 13.2 L 3 9.1 L 9.6 8.8 Z"
+            fill="#6b5318" stroke="url(#ownerStarGrad)" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+        </svg>
+        <span className="brand-text" style={{ fontFamily: "var(--font-display, 'Fraunces', serif)", color: "#d4af37", fontSize: "1.15rem", letterSpacing: "-0.02em" }}>
+          FONCÉ
+        </span>
       </Link>
       <Link href="/dashboard" className="btn btn-sm" style={{ whiteSpace: "nowrap" }}>
         Back to dashboard
