@@ -11,7 +11,13 @@ export const dynamic = "force-dynamic";
 // Ported from viewShowcase(): applies the creator's theme, then renders products
 // in their chosen template (grid / editorial / minimal) with their price-display
 // preference (price / shop now / cart icon).
-export default async function StorefrontPage({ params }: { params: { username: string } }) {
+export default async function StorefrontPage({
+  params,
+  searchParams,
+}: {
+  params: { username: string };
+  searchParams: { owner?: string };
+}) {
   const creator = await db.user.findUnique({
     where: { username: params.username.toLowerCase() },
     include: {
@@ -23,9 +29,11 @@ export default async function StorefrontPage({ params }: { params: { username: s
   });
   if (!creator || creator.role === "ADMIN") notFound();
 
-  // Server-side owner check — reliable (reads the session cookie during render).
+  // Show the Back-to-dashboard bar when the viewer is the owner (session check)
+  // OR when they arrived via the dashboard's "view live" link (?owner=1) — the
+  // latter is bulletproof even if the auth check is blocked on preview URLs.
   const me = await getCurrentUser();
-  const isOwner = me?.id === creator.id;
+  const showOwnerBar = me?.id === creator.id || searchParams.owner === "1";
 
   const products = creator.products.map((p) => ({
     id: p.id,
@@ -72,7 +80,7 @@ export default async function StorefrontPage({ params }: { params: { username: s
         themeFont={creator.themeFont}
         themeCustom={creator.themeCustom}
       />
-      {isOwner && (
+      {showOwnerBar && (
         <div style={{
           position: "sticky", top: 0, zIndex: 40, display: "flex", alignItems: "center",
           justifyContent: "space-between", gap: "0.75rem",
