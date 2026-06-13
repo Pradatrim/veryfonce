@@ -11,13 +11,7 @@ export const dynamic = "force-dynamic";
 // Ported from viewShowcase(): applies the creator's theme, then renders products
 // in their chosen template (grid / editorial / minimal) with their price-display
 // preference (price / shop now / cart icon).
-export default async function StorefrontPage({
-  params,
-  searchParams,
-}: {
-  params: { username: string };
-  searchParams: { owner?: string };
-}) {
+export default async function StorefrontPage({ params }: { params: { username: string } }) {
   const creator = await db.user.findUnique({
     where: { username: params.username.toLowerCase() },
     include: {
@@ -29,11 +23,11 @@ export default async function StorefrontPage({
   });
   if (!creator || creator.role !== "CREATOR") notFound();
 
-  // Show the Back-to-dashboard bar when the viewer is the owner (session check)
-  // OR when they arrived via the dashboard's "view live" link (?owner=1) — the
-  // latter is bulletproof even if the auth check is blocked on preview URLs.
+  // Show the Back-to-dashboard bar only to the actually-logged-in owner. With
+  // the canonical-host middleware this is reliable, so the bar both appears
+  // correctly AND its link works (no bounce-to-login).
   const me = await getCurrentUser();
-  const showOwnerBar = me?.id === creator.id || searchParams.owner === "1";
+  const showOwnerBar = me?.id === creator.id;
 
   const products = creator.products.map((p) => ({
     id: p.id,

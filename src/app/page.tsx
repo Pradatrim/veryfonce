@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 
 // Ported 1:1 from viewLanding() in the prototype. The testimonials section only
 // renders when there are site reviews (none yet) — matching the original, which
 // returns '' when state.siteReviews is empty.
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const me = await getCurrentUser();
+  const loggedInCreator = Boolean(me && me.role === "CREATOR");
   return (
     <>
       <SiteHeader />
@@ -43,9 +48,15 @@ export default function HomePage() {
                 fulfillment, you handle taste.
               </p>
               <div className="hero-actions">
-                <Link href="/signup" className="btn btn-primary btn-shimmer">
-                  Create your showcase
-                </Link>
+                {loggedInCreator ? (
+                  <Link href="/dashboard" className="btn btn-primary btn-shimmer">
+                    Go to your dashboard
+                  </Link>
+                ) : (
+                  <Link href="/signup" className="btn btn-primary btn-shimmer">
+                    Create your showcase
+                  </Link>
+                )}
                 <Link href="/phone-demo" className="btn">
                   See it on a phone →
                 </Link>

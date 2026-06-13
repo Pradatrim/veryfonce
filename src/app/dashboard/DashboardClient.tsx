@@ -145,7 +145,7 @@ export default function DashboardClient({ user, products, stats }: { user: User;
               <div>
                 <h1>@{user.username}</h1>
                 <p style={{ color: "var(--fg-muted)" }}>
-                  Your showcase · <a href={`/${user.username}?owner=1`} target="_blank" rel="noreferrer">view live</a>
+                  Your showcase · <a href={`/${user.username}`} target="_blank" rel="noreferrer">view live</a>
                 </p>
               </div>
             </div>

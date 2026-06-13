@@ -2,18 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Canonical-host redirect.
 // ----------------------------------------------------------------------------
-// Vercel serves this app on many hostnames (the production domain plus long
-// auto-generated preview/branch URLs). Login cookies are per-hostname, so a
-// user who lands on a preview URL looks "logged out" even though they have an
-// account — the #1 source of "it keeps signing me out" bugs.
+// Vercel serves this app on several *.vercel.app hostnames: the canonical
+// production domain PLUS long auto-generated preview/branch URLs. Login cookies
+// are per-hostname, so a user who lands on a preview URL looks "logged out"
+// even though they have an account — the #1 source of "it keeps signing me out".
 //
-// Fix: every request to a non-canonical *.vercel.app host is permanently
-// redirected to the canonical host (path + query preserved). One domain, one
-// session — it becomes impossible to land on a logged-out clone.
+// Fix: redirect any NON-canonical *.vercel.app host to the canonical one
+// (preserving path + query). One domain, one session. Custom domains (e.g.
+// fonce.com) and localhost are never touched, so this is safe.
 //
-// Override the canonical host with CANONICAL_HOST or NEXT_PUBLIC_APP_URL when
-// the real domain (e.g. fonce.com) is connected.
+// Canonical host = CANONICAL_HOST, else the host from NEXT_PUBLIC_APP_URL,
+// else the default below.
 // ----------------------------------------------------------------------------
+
+const DEFAULT_CANONICAL = "veryfonce.vercel.app";
 
 function canonicalHost(): string {
   if (process.env.CANONICAL_HOST) return process.env.CANONICAL_HOST;
@@ -21,28 +23,22 @@ function canonicalHost(): string {
     try {
       return new URL(process.env.NEXT_PUBLIC_APP_URL).host;
     } catch {
-      /* fall through */
+      /* ignore */
     }
   }
-  return "veryfonce.vercel.app";
+  return DEFAULT_CANONICAL;
 }
 
 export function middleware(req: NextRequest) {
-  const host = req.headers.get("host") ?? "";
+  const host = (req.headers.get("host") ?? "").toLowerCase();
   const canonical = canonicalHost();
 
-  // Local dev and the canonical host pass straight through.
-  if (
-    host === canonical ||
-    host.startsWith("localhost") ||
-    host.startsWith("127.") ||
-    host.endsWith(".local")
-  ) {
+  // Only ever touch *.vercel.app hosts that aren't the canonical one. Anything
+  // else (custom domain, localhost, the canonical host itself) passes through.
+  if (!host.endsWith(".vercel.app") || host === canonical) {
     return NextResponse.next();
   }
 
-  // Any other host (preview/branch deployment URLs) → canonical. 308 preserves
-  // the method and body, so API calls redirect safely too.
   const url = req.nextUrl.clone();
   url.host = canonical;
   url.protocol = "https";
@@ -51,6 +47,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except Next.js static assets.
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
