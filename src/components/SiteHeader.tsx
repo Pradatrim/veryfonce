@@ -44,9 +44,9 @@ export default function SiteHeader() {
             </Link>
           </div>
           <div className="nav-actions" id="nav-actions">
-            <CartButton variant="inline" />
             {!loaded ? null : me && me.role === "CREATOR" ? (
               <>
+                <CartButton variant="inline" />
                 <Link href="/dashboard" className="btn btn-ghost btn-sm">Dashboard</Link>
                 <Link href="/api/auth/logout" className="btn btn-sm">Log out</Link>
               </>

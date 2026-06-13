@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
+// Never cache — must reflect the live session every time.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Lightweight current-user lookup for client components (the nav header).
 export async function GET() {
   const user = await getCurrentUser();

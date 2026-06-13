@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { THEME_PRESETS, FONT_SETS, isPresetVip, isFontVip } from "@/lib/themes";
 import VipPaywall from "@/components/VipPaywall";
@@ -43,7 +43,14 @@ export default function DashboardClient({ user, products, stats }: { user: User;
 
   // NOTE: the theme applies to the public STOREFRONT, not the dashboard. The
   // dashboard stays Fonce-branded; the swatches preview the storefront colors.
-  const link = `fonce.com/@${user.username}`;
+
+  // The bio link must be the REAL, working storefront URL (this deployment's
+  // origin + /username), so a creator can copy it into their bio and it opens
+  // their live showcase when tapped.
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const storeUrl = `${origin}/${user.username}`;
+  const link = origin ? `${origin.replace(/^https?:\/\//, "")}/${user.username}` : `…/${user.username}`;
 
   async function patch(body: Record<string, unknown>) {
     const res = await fetch("/api/profile", {
@@ -77,7 +84,7 @@ export default function DashboardClient({ user, products, stats }: { user: User;
   async function removePhoto() { await patch({ removePhoto: true }); }
 
   function copyLink() {
-    navigator.clipboard?.writeText(`https://${link}`).then(() => {
+    navigator.clipboard?.writeText(storeUrl).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 1500);
     });
   }

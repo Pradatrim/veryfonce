@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { buildThemeConfig, themeToCss } from "@/lib/themes";
 import ShowcaseTheme from "@/components/ShowcaseTheme";
 import CartButton from "@/components/CartButton";
 import OwnerBar from "@/components/OwnerBar";
@@ -55,9 +56,12 @@ export default async function StorefrontPage({ params }: { params: { username: s
   }
 
   const initial = creator.username.charAt(0).toUpperCase();
+  // Server-side theme: applies on first paint, no dependency on client JS.
+  const themeCss = themeToCss(buildThemeConfig(creator));
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       <ShowcaseTheme
         username={creator.username}
         themePreset={creator.themePreset}
